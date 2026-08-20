@@ -15,14 +15,17 @@ jobs:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
 
-      - name: Install and Build 🔧
+      - name: Setup Node.js 🔧
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-      
-      - run: npm ci
-      - run: npm run build 
+          node-version: 22  # Обновили версию Node.js, чтобы убрать предупреждение о депрекации
+
+      # Используем npm install вместо npm ci, так как у нас в репозитории нет lock-файла
+      - name: Install Dependencies 📦
+        run: npm install
+
+      - name: Build Project 🏗️
+        run: npm run build
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4
