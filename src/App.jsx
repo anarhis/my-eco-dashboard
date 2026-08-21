@@ -109,6 +109,17 @@ export default function App() {
     return () => clearInterval(telemetryInterval);
   }, []);
 
+
+  // Синхронизация типа ИИ-сортировки с выбранной фермой
+  useEffect(() => {
+    if (activeTab === 'palawan') {
+      setAiSortingType('pearl');
+    } else if (activeTab === 'costarica') {
+      setAiSortingType('coffee');
+    }
+    setAiResult(null); // Сбрасываем результат при смене вкладки
+  }, [activeTab]);
+
   // Функция симуляции RFID сканирования
   const handleRfidScan = (e) => {
     e.preventDefault();
@@ -160,23 +171,32 @@ export default function App() {
 
   // Функция для динамического фона на основе выбранной вкладки (Фермы)
   const getDynamicBg = () => {
-    const overlays = "linear-gradient(to bottom, rgba(2, 6, 23, 0.88), rgba(2, 6, 23, 0.98))";
+    let overlay = "linear-gradient(to bottom, rgba(2, 6, 23, 0.9), rgba(2, 6, 23, 0.98))"; // Global dark overlay
     let imgUrl = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80"; // Global High-tech Grid
+    
     if (activeTab === 'palawan') {
+      overlay = "linear-gradient(to bottom, rgba(8, 47, 73, 0.82), rgba(2, 6, 23, 0.98))"; // Cyan/Marine overlay
       imgUrl = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80"; // Palawan Turquoise Lagoon
     } else if (activeTab === 'costarica') {
+      overlay = "linear-gradient(to bottom, rgba(6, 78, 59, 0.82), rgba(2, 6, 23, 0.98))"; // Emerald Jungle overlay
       imgUrl = "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1600&q=80"; // Costa Rica Cloud Forest
     }
     return {
-      backgroundImage: `${overlays}, url('${imgUrl}')`,
+      backgroundImage: `${overlay}, url('${imgUrl}')`,
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundAttachment: 'fixed'
     };
   };
 
+  const getThemeSelection = () => {
+    if (activeTab === 'palawan') return "selection:bg-cyan-500 selection:text-slate-900";
+    if (activeTab === 'costarica') return "selection:bg-emerald-500 selection:text-slate-900";
+    return "selection:bg-teal-500 selection:text-slate-900";
+  };
+
   return (
-    <div style={getDynamicBg()} className="min-h-screen text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-900 transition-all duration-700 ease-in-out">
+    <div style={getDynamicBg()} className={`min-h-screen text-slate-100 font-sans transition-all duration-700 ease-in-out ${getThemeSelection()}`}>
       
       {/* HEADER / ТАКТИЧЕСКИЙ БАР */}
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 py-3 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -185,7 +205,11 @@ export default function App() {
             <Cpu className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-teal-400 via-emerald-400 to-amber-300 bg-clip-text text-transparent">
+            <h1 className={`text-lg font-bold tracking-tight bg-gradient-to-r ${
+              activeTab === 'palawan' ? 'from-cyan-400 via-sky-400 to-teal-300' :
+              activeTab === 'costarica' ? 'from-emerald-400 via-green-400 to-amber-300' :
+              'from-teal-400 via-emerald-400 to-amber-300'
+            } bg-clip-text text-transparent transition-all duration-500`}>
               ECO-SYNAPSE PWA
             </h1>
             <p className="text-xs text-slate-400 font-mono">Autonomous Bi-Farm Controller [v1.2.0-offline]</p>
@@ -196,21 +220,33 @@ export default function App() {
         <div className="flex bg-slate-900 border border-slate-800 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
           <button 
             onClick={() => setActiveTab('global')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${activeTab === 'global' ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-teal-400 shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200'}`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${
+              activeTab === 'global' 
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(20,184,166,0.4)]' 
+                : 'text-slate-400 hover:text-teal-400'
+            }`}
           >
             <Home className="w-3.5 h-3.5" />
             Глобальный Обзор
           </button>
           <button 
             onClick={() => setActiveTab('palawan')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${activeTab === 'palawan' ? 'bg-teal-500 text-slate-950 shadow-[0_0_12px_rgba(20,184,166,0.4)]' : 'text-slate-400 hover:text-teal-400'}`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${
+              activeTab === 'palawan' 
+                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(34,211,238,0.4)]' 
+                : 'text-slate-400 hover:text-cyan-400'
+            }`}
           >
             <Anchor className="w-3.5 h-3.5" />
             Ферма 1: Палаван (Морская)
           </button>
           <button 
             onClick={() => setActiveTab('costarica')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${activeTab === 'costarica' ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.4)]' : 'text-slate-400 hover:text-emerald-400'}`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${
+              activeTab === 'costarica' 
+                ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.4)]' 
+                : 'text-slate-400 hover:text-emerald-400'
+            }`}
           >
             <Feather className="w-3.5 h-3.5" />
             Ферма 2: Коста-Рика (Агро)
@@ -745,7 +781,8 @@ export default function App() {
         )}
 
         {/* 3. МОДУЛЬ ИИ-СОРТИРОВКИ И КОНТРОЛЯ КАЧЕСТВА */}
-        <section className="bg-slate-900/30 border border-slate-800 rounded-3xl p-6 space-y-6">
+        {activeTab !== 'global' && (
+          <section className={`bg-slate-900/30 border ${activeTab === 'palawan' ? 'border-cyan-500/20' : 'border-emerald-500/20'} rounded-3xl p-6 space-y-6 transition-colors duration-500`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h3 className="text-lg font-bold flex items-center gap-2 text-slate-100">
@@ -754,26 +791,21 @@ export default function App() {
               <p className="text-xs text-slate-400 mt-1">Локальный запуск компьютерного зрения WebNN / WASM (без отправки фото на сервер)</p>
             </div>
 
-            {/* Выбор типа сортировки */}
-            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-              <button 
-                onClick={() => setAiSortingType('pearl')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${aiSortingType === 'pearl' ? 'bg-teal-500 text-slate-950' : 'text-slate-400'}`}
-              >
-                Жемчуг Pinctada (Палаван)
-              </button>
-              <button 
-                onClick={() => setAiSortingType('coffee')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${aiSortingType === 'coffee' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'}`}
-              >
-                Ягоды Кофе (Коста-Рика)
-              </button>
-            </div>
+            {/* Выбор типа сортировки (заменен на авто-определение на основе активной вкладки) */}
+            <span className={`text-xs px-3 py-1.5 rounded-xl border font-bold transition-all duration-500 ${
+              activeTab === 'palawan' 
+                ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20' 
+                : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+            }`}>
+              {activeTab === 'palawan' ? '🎯 Автокалибровка Жемчуга Pinctada' : '🎯 Экспертиза Качества Спешелти-Кофе'}
+            </span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Окно загрузки/камеры (Интерактивное с реальными фото!) */}
-            <div className="bg-slate-950 border border-dashed border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 hover:border-teal-500/50 transition-all cursor-pointer relative overflow-hidden min-h-[300px]">
+            <div className={`bg-slate-950 border border-dashed border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 transition-all duration-500 cursor-pointer relative overflow-hidden min-h-[300px] ${
+              activeTab === 'palawan' ? 'hover:border-cyan-500/50' : 'hover:border-emerald-500/50'
+            }`}>
               {aiResult || aiAnalyzing ? (
                 // Если запущен тест, показываем сканируемую фотографию с оверлеем!
                 <div className="absolute inset-0 w-full h-full animate-fadeIn">
@@ -786,13 +818,23 @@ export default function App() {
                     className="w-full h-full object-cover brightness-[0.7] contrast-[1.05]"
                   />
                   {/* Сканирующий лазерный луч */}
-                  <div className="absolute left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-bounce" style={{ top: '35%', animationDuration: '3s' }}></div>
+                  <div className={`absolute left-0 right-0 h-[3px] bg-gradient-to-r from-transparent ${
+                    activeTab === 'palawan' ? 'via-cyan-400' : 'via-emerald-400'
+                  } to-transparent shadow-[0_0_10px_rgba(${
+                    activeTab === 'palawan' ? '34,211,238,0.8' : '16,185,129,0.8'
+                  })] animate-bounce`} style={{ top: '35%', animationDuration: '3s' }}></div>
                   
                   {/* Нейро-рамка поверх */}
                   {!aiAnalyzing && aiResult && (
-                    <div className="absolute inset-4 border-2 border-dashed rounded-xl border-amber-400/40 flex items-center justify-center">
-                      <div className="bg-slate-950/90 border border-amber-400/40 p-2.5 rounded-lg text-[10px] text-amber-300 font-mono text-left max-w-[200px] shadow-2xl absolute top-4 left-4">
-                        <div className="font-bold border-b border-amber-400/20 pb-0.5 mb-1 flex items-center gap-1">
+                    <div className={`absolute inset-4 border-2 border-dashed rounded-xl ${
+                      activeTab === 'palawan' ? 'border-cyan-400/40' : 'border-emerald-400/40'
+                    } flex items-center justify-center`}>
+                      <div className={`bg-slate-950/90 border ${
+                        activeTab === 'palawan' ? 'border-cyan-400/40 text-cyan-300' : 'border-emerald-400/40 text-emerald-300'
+                      } p-2.5 rounded-lg text-[10px] font-mono text-left max-w-[200px] shadow-2xl absolute top-4 left-4`}>
+                        <div className={`font-bold border-b ${
+                          activeTab === 'palawan' ? 'border-cyan-400/20' : 'border-emerald-400/20'
+                        } pb-0.5 mb-1 flex items-center gap-1`}>
                           <Cpu className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} /> TensorFlow.js
                         </div>
                         <div>Распознано: <span className="text-white font-bold">{aiSortingType === 'pearl' ? 'Pinctada Pearl' : 'Coffea Arabica'}</span></div>
@@ -822,7 +864,11 @@ export default function App() {
                 <button 
                   onClick={handleAiAnalysis}
                   disabled={aiAnalyzing}
-                  className="bg-gradient-to-tr from-amber-500 to-yellow-400 hover:brightness-110 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
+                  className={`bg-gradient-to-tr ${
+                    activeTab === 'palawan' 
+                      ? 'from-cyan-500 to-teal-400 shadow-cyan-500/20' 
+                      : 'from-emerald-500 to-amber-400 shadow-emerald-500/20'
+                  } hover:brightness-110 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg transition-all disabled:opacity-50`}
                 >
                   {aiAnalyzing ? 'Сканирование...' : 'Запустить ИИ-тест'}
                 </button>
@@ -840,7 +886,9 @@ export default function App() {
             {/* Результат классификации */}
             <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Результат AI-Калибровки</h4>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">
+                  {activeTab === 'palawan' ? 'Результат AI-Калибровки Жемчуга' : 'Результат AI-Анализа Дефектов'}
+                </h4>
                 
                 {aiAnalyzing && (
                   <div className="space-y-4 py-4">
@@ -849,7 +897,9 @@ export default function App() {
                       <span>Локальный анализ сверточной сетью (MobileNet-V3)...</span>
                     </div>
                     <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                      <div className="bg-gradient-to-r from-amber-500 to-yellow-400 h-2 rounded-full animate-pulse" style={{ width: '80%' }}></div>
+                      <div className={`bg-gradient-to-r ${
+                        activeTab === 'palawan' ? 'from-cyan-500 to-teal-400' : 'from-emerald-500 to-amber-400'
+                      } h-2 rounded-full animate-pulse`} style={{ width: '80%' }}></div>
                     </div>
                   </div>
                 )}
@@ -857,14 +907,18 @@ export default function App() {
                 {!aiAnalyzing && aiResult && (
                   <div className="space-y-4 animate-fadeIn">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-full font-bold">
+                      <span className={`text-xs ${
+                        activeTab === 'palawan' 
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' 
+                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      } px-2.5 py-1 rounded-full font-bold`}>
                         {aiResult.grade}
                       </span>
                     </div>
                     <p className="text-sm text-slate-300 leading-relaxed">{aiResult.desc}</p>
                     <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs">
                       <strong className="text-slate-400">Технологическое назначение:</strong> 
-                      <p className="text-emerald-400 font-bold mt-1">{aiResult.shellUse || aiResult.action}</p>
+                      <p className={`font-bold mt-1 ${activeTab === 'palawan' ? 'text-cyan-400' : 'text-emerald-400'}`}>{aiResult.shellUse || aiResult.action}</p>
                     </div>
                   </div>
                 )}
@@ -882,15 +936,28 @@ export default function App() {
             </div>
           </div>
         </section>
+        )}
 
         {/* 4. БЕЗОПАСНОСТЬ, АЛЕРТЫ И ИНТЕРНЕТ ВЕЩЕЙ (IoT-ЛОГ) */}
-        <section className="bg-slate-900/30 border border-slate-800 rounded-3xl p-6 space-y-6">
+        <section className={`bg-slate-900/30 border ${
+          activeTab === 'palawan' ? 'border-cyan-500/20' :
+          activeTab === 'costarica' ? 'border-emerald-500/20' :
+          'border-slate-800'
+        } rounded-3xl p-6 space-y-6 transition-all duration-500`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <Shield className="text-rose-400 w-5 h-5" /> Единая Панель Безопасности & IoT-датчиков (События в Реальном Времени)
+                <Shield className="text-rose-500 w-5 h-5" /> {
+                  activeTab === 'palawan' ? 'Панель Мониторинга Охраны Палавана' :
+                  activeTab === 'costarica' ? 'Панель Контроля Микроклимата и Орошения' :
+                  'Единая Консоль Безопасности & IoT-Датчиков'
+                }
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">Консоль логирования событий охраны Палавана и автополива/климата Коста-Рики</p>
+              <p className="text-xs text-slate-400 mt-0.5">{
+                activeTab === 'palawan' ? 'Логи ИИ-радаров береговой охраны, датчиков глубины и состояния сеток' :
+                activeTab === 'costarica' ? 'Логи климатических станций, параметров ульев и датчиков влажности почвы' :
+                'Консоль логирования событий охраны Палавана и автополива/климата Коста-Рики'
+              }</p>
             </div>
 
             {/* Форма симуляции ручного оповещения */}
@@ -900,9 +967,17 @@ export default function App() {
                 placeholder="Ввести тестовое событие..."
                 value={newAlertMessage}
                 onChange={(e) => setNewAlertMessage(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-rose-500 flex-1 sm:w-64 font-mono"
+                className={`bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 ${
+                  activeTab === 'palawan' ? 'focus:ring-cyan-500' :
+                  activeTab === 'costarica' ? 'focus:ring-emerald-500' :
+                  'focus:ring-rose-500'
+                } flex-1 sm:w-64 font-mono`}
               />
-              <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-slate-100 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors">
+              <button type="submit" className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                activeTab === 'palawan' ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_8px_rgba(34,211,238,0.3)]' :
+                activeTab === 'costarica' ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_8px_rgba(16,185,129,0.3)]' :
+                'bg-rose-600 hover:bg-rose-500 text-slate-100'
+              }`}>
                 Вызвать Алерт
               </button>
             </form>
@@ -918,7 +993,14 @@ export default function App() {
             </div>
 
             <div className="divide-y divide-slate-900/80 max-h-[300px] overflow-y-auto">
-              {securityLog.map((log) => (
+              {securityLog
+                .filter(log => {
+                  if (activeTab === 'global') return true;
+                  if (activeTab === 'palawan') return log.location.includes('Палаван');
+                  if (activeTab === 'costarica') return log.location.includes('Коста-Рика');
+                  return true;
+                })
+                .map((log) => (
                 <div key={log.id} className="grid grid-cols-12 px-4 py-3.5 text-xs text-slate-300 hover:bg-slate-900/40 items-center transition-colors">
                   <div className="col-span-2 font-mono text-slate-500">{log.time}</div>
                   <div className="col-span-3 font-semibold flex items-center gap-1.5">
