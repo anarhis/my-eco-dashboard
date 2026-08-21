@@ -1,1 +1,1 @@
-if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/eco-synapse-dashboard/sw.js', { scope: '/eco-synapse-dashboard/' })})}
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/my-eco-dashboard/sw.js', { scope: '/my-eco-dashboard/' })})}
