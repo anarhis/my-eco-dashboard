@@ -6,7 +6,7 @@ import {
   Wind, Zap, CheckSquare, Plus, AlertTriangle, Cpu, Camera, Filter, HardHat
 } from 'lucide-react';
 
-// === МОКОВЫЕ ДАННЫЕ ДЛЯ СТАРТА ===
+// === CONSTANTS & INITIAL DATA ===
 const INITIAL_SECURITY_LOG = [
   { id: 1, time: '14:23:10', location: 'Буй №4 (Палаван)', event: 'AI-радар обнаружил неопознанное плавсредство на дистанции 800м. Оповещение отправлено.', severity: 'high' },
   { id: 2, time: '13:05:45', location: 'Сектор А3 (Коста-Рика)', event: 'Автоматический полив включен. Температура почвы >28°C. Расход: 450л.', severity: 'info' },
@@ -30,17 +30,18 @@ export default function App() {
   const [timePalawan, setTimePalawan] = useState('');
   const [timeCostaRica, setTimeCostaRica] = useState('');
   
-  // IoT Real-Time Telemetry (с автоматическим дрейфом значений)
+  // IoT Telemetry with drifting values
   const [telemetry, setTelemetry] = useState({
     palawan: { temp: 28.4, pH: 8.15, do: 6.75, salinity: 34.2, status: 'SECURE' },
     costarica: { soilMoisture: 68.2, airTemp: 23.4, rain: 12.0, bloomIndex: 88, hivesHealth: 94 }
   });
 
-  // Локальные реактивные состояния для интерактивности модулей
+  // Security Logs & Events
   const [securityLog, setSecurityLog] = useState(INITIAL_SECURITY_LOG);
-  const [newAlertMessage, setNewAlertMessage] = useState('');
+  const [newPalawanAlert, setNewPalawanAlert] = useState('');
+  const [newCostaRicaAlert, setNewCostaRicaAlert] = useState('');
   
-  // RFID Сканнер
+  // RFID Scanner (Palawan)
   const [rfidSearch, setRfidSearch] = useState('');
   const [scannedItem, setScannedItem] = useState(null);
   const [cleaningChecklist, setCleaningChecklist] = useState([
@@ -53,7 +54,7 @@ export default function App() {
   ]);
   const [newMortality, setNewMortality] = useState({ qty: '', cause: 'Естественный отбор' });
 
-  // Коста-Рика Кофе & Ваниль & Пчелы
+  // Costa Rica Vanilla & Coffee states
   const [vanillaPollinations, setVanillaPollinations] = useState([
     { id: 'V-SEC-B', count: 142, pollinatedToday: 18, matureStatus: '85% зеленые стручки' },
     { id: 'V-SEC-C', count: 95, pollinatedToday: 12, matureStatus: '40% созревание' }
@@ -61,21 +62,20 @@ export default function App() {
   const [newPollinationCount, setNewPollinationCount] = useState('');
   const [selectedSector, setSelectedSector] = useState('Кофе Восток');
 
-  // AI-Сортировка (Симулятор)
-  const [aiSortingType, setAiSortingType] = useState('pearl'); // 'pearl' | 'coffee'
-  const [aiAnalyzing, setAiAnalyzing] = useState(false);
-  const [aiResult, setAiResult] = useState(null);
+  // AI Sorting States (Fully separated)
+  const [palawanAiAnalyzing, setPalawanAiAnalyzing] = useState(false);
+  const [palawanAiResult, setPalawanAiResult] = useState(null);
 
-  // Обновление локальных часов реального времени для двух таймзон
+  const [costaRicaAiAnalyzing, setCostaRicaAiAnalyzing] = useState(false);
+  const [costaRicaAiResult, setCostaRicaAiResult] = useState(null);
+
+  // Timezones Clocks
   useEffect(() => {
     const updateClocks = () => {
       const now = new Date();
-      
-      // Филиппины (UTC+8)
       const optionsPalawan = { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
       setTimePalawan(new Intl.DateTimeFormat('ru-RU', optionsPalawan).format(now));
 
-      // Коста-Рика (UTC-6)
       const optionsCR = { timeZone: 'America/Costa_Rica', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
       setTimeCostaRica(new Intl.DateTimeFormat('ru-RU', optionsCR).format(now));
     };
@@ -85,7 +85,7 @@ export default function App() {
     return () => clearInterval(clockInterval);
   }, []);
 
-  // Имитация живых датчиков (дрейф параметров)
+  // Live sensor drifts
   useEffect(() => {
     const telemetryInterval = setInterval(() => {
       setTelemetry(prev => ({
@@ -109,18 +109,7 @@ export default function App() {
     return () => clearInterval(telemetryInterval);
   }, []);
 
-
-  // Синхронизация типа ИИ-сортировки с выбранной фермой
-  useEffect(() => {
-    if (activeTab === 'palawan') {
-      setAiSortingType('pearl');
-    } else if (activeTab === 'costarica') {
-      setAiSortingType('coffee');
-    }
-    setAiResult(null); // Сбрасываем результат при смене вкладки
-  }, [activeTab]);
-
-  // Функция симуляции RFID сканирования
+  // RFID Scan (Palawan)
   const handleRfidScan = (e) => {
     e.preventDefault();
     const trimmed = rfidSearch.trim().toUpperCase();
@@ -131,88 +120,138 @@ export default function App() {
     }
   };
 
-  // Симуляция AI-анализа качества
-  const handleAiAnalysis = () => {
-    setAiAnalyzing(true);
-    setAiResult(null);
+  // Palawan Pearl AI scan
+  const runPalawanAi = () => {
+    setPalawanAiAnalyzing(true);
+    setPalawanAiResult(null);
     setTimeout(() => {
-      setAiAnalyzing(false);
-      if (aiSortingType === 'pearl') {
-        const grades = [
-          { grade: 'AAA Gem Quality', desc: 'Идеальная сферичность, зеркальный золотистый люстр. Под бренд-коллекцию.', shellUse: 'Монолитная тарелка бренда' },
-          { grade: 'Класс B (Экспорт)', desc: 'Минорные природные неровности. Рекомендовано для жемчужных нитей средней категории.', shellUse: 'Оптовая продажа раковины' },
-          { grade: 'Класс C (Барочный жемчуг)', desc: 'Уникальная асимметричная форма, высокий перламутровый блеск.', shellUse: 'Декор интерьеров' }
-        ];
-        setAiResult(grades[Math.floor(Math.random() * grades.length)]);
-      } else {
-        const defects = [
-          { grade: 'Качество: Превосходное (SCAA 88+)', desc: 'Крупные дефекты отсутствуют. Равномерная плотность влажности 11.2%. Оценка спешелти.', action: 'Допустить в лот премиум обжарки' },
-          { grade: 'Обнаружен дефект: Квакеры / Недозрелые', desc: 'Обнаружено 3 недозрелых зерна на 100г. AI рекомендует дополнительную ручную калибровку.', action: 'Направить на повторную сортировку' }
-        ];
-        setAiResult(defects[Math.floor(Math.random() * defects.length)]);
-      }
+      setPalawanAiAnalyzing(false);
+      const grades = [
+        { grade: 'AAA Perfect Gold', desc: 'Идеальная сферичность, зеркальный золотистый люстр. Под премиум коллекцию.', shellUse: 'Выставочный стенд бренда' },
+        { grade: 'Класс B (Экспорт)', desc: 'Минорные природные неровности. Рекомендовано для жемчужных нитей средней категории.', shellUse: 'Оптовая продажа раковины' },
+        { grade: 'Класс C (Барокко)', desc: 'Уникальная асимметричная форма, высокий перламутровый блеск.', shellUse: 'Декор люкс-интерьеров' }
+      ];
+      setPalawanAiResult(grades[Math.floor(Math.random() * grades.length)]);
     }, 1800);
   };
 
-  // Добавление кастомного события/алерта в IoT Лог
-  const handleAddAlert = (e) => {
+  // Costa Rica Coffee AI scan
+  const runCostaRicaAi = () => {
+    setCostaRicaAiAnalyzing(true);
+    setCostaRicaAiResult(null);
+    setTimeout(() => {
+      setCostaRicaAiAnalyzing(false);
+      const defects = [
+        { grade: 'Качество: Превосходное (SCAA 89+)', desc: 'Крупные дефекты отсутствуют. Равномерная плотность влажности 11.2%. Оценка спешелти.', action: 'Допустить в лот премиум обжарки' },
+        { grade: 'Дефект: Квакеры / Недозрелые', desc: 'Обнаружено 3 недозрелых зерна на 100г. AI рекомендует дополнительную ручную калибровку.', action: 'Направить на повторную сортировку' }
+      ];
+      setCostaRicaAiResult(defects[Math.floor(Math.random() * defects.length)]);
+    }, 1800);
+  };
+
+  // Manual alerts
+  const handleAddPalawanAlert = (e) => {
     e.preventDefault();
-    if (!newAlertMessage.trim()) return;
+    if (!newPalawanAlert.trim()) return;
     const newLog = {
       id: Date.now(),
       time: new Date().toLocaleTimeString('ru-RU'),
-      location: activeTab === 'palawan' ? 'Пост Палаван (AI)' : activeTab === 'costarica' ? 'Коста-Рика Сенсоры' : 'Глобальная консоль',
-      event: newAlertMessage,
+      location: 'Пост Палаван (AI)',
+      event: newPalawanAlert,
       severity: 'warning'
     };
     setSecurityLog([newLog, ...securityLog]);
-    setNewAlertMessage('');
+    setNewPalawanAlert('');
   };
 
-  // Функция для динамического фона на основе выбранной вкладки (Фермы)
-  const getDynamicBg = () => {
-    let overlay = "linear-gradient(to bottom, rgba(2, 6, 23, 0.9), rgba(2, 6, 23, 0.98))"; // Global dark overlay
-    let imgUrl = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80"; // Global High-tech Grid
-    
-    if (activeTab === 'palawan') {
-      overlay = "linear-gradient(to bottom, rgba(8, 47, 73, 0.82), rgba(2, 6, 23, 0.98))"; // Cyan/Marine overlay
-      imgUrl = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80"; // Palawan Turquoise Lagoon
-    } else if (activeTab === 'costarica') {
-      overlay = "linear-gradient(to bottom, rgba(6, 78, 59, 0.82), rgba(2, 6, 23, 0.98))"; // Emerald Jungle overlay
-      imgUrl = "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1600&q=80"; // Costa Rica Cloud Forest
-    }
-    return {
-      backgroundImage: `${overlay}, url('${imgUrl}')`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundAttachment: 'fixed'
+  const handleAddCostaRicaAlert = (e) => {
+    e.preventDefault();
+    if (!newCostaRicaAlert.trim()) return;
+    const newLog = {
+      id: Date.now(),
+      time: new Date().toLocaleTimeString('ru-RU'),
+      location: 'Коста-Рика Сенсоры',
+      event: newCostaRicaAlert,
+      severity: 'info'
     };
+    setSecurityLog([newLog, ...securityLog]);
+    setNewCostaRicaAlert('');
   };
 
-  const getThemeSelection = () => {
-    if (activeTab === 'palawan') return "selection:bg-cyan-500 selection:text-slate-900";
-    if (activeTab === 'costarica') return "selection:bg-emerald-500 selection:text-slate-900";
-    return "selection:bg-teal-500 selection:text-slate-900";
+  // Theme-Branded styles
+  const getThemeClasses = () => {
+    if (activeTab === 'palawan') {
+      return {
+        bg: 'bg-slate-950',
+        overlay: 'bg-gradient-to-b from-slate-950/90 via-cyan-950/20 to-slate-950/95',
+        navBtnActive: 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.5)] border-cyan-400',
+        navBtnInactive: 'text-slate-400 hover:text-cyan-400',
+        cardBg: 'bg-slate-900/40 border-cyan-500/20 shadow-cyan-950/10',
+        accentText: 'text-cyan-400',
+        accentBg: 'bg-cyan-500',
+        accentBorder: 'border-cyan-500/30',
+        accentGlow: 'shadow-[0_0_12px_rgba(34,211,238,0.2)]',
+        accentRing: 'focus:ring-cyan-500',
+        logoText: 'from-cyan-400 via-sky-400 to-teal-300',
+        bannerImg: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80'
+      };
+    } else if (activeTab === 'costarica') {
+      return {
+        bg: 'bg-slate-950',
+        overlay: 'bg-gradient-to-b from-slate-950/90 via-emerald-950/20 to-slate-950/95',
+        navBtnActive: 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.5)] border-emerald-400',
+        navBtnInactive: 'text-slate-400 hover:text-emerald-400',
+        cardBg: 'bg-slate-900/40 border-emerald-500/20 shadow-emerald-950/10',
+        accentText: 'text-emerald-400',
+        accentBg: 'bg-emerald-500',
+        accentBorder: 'border-emerald-500/30',
+        accentGlow: 'shadow-[0_0_12px_rgba(16,185,129,0.2)]',
+        accentRing: 'focus:ring-emerald-500',
+        logoText: 'from-emerald-400 via-green-400 to-amber-300',
+        bannerImg: 'https://images.unsplash.com/photo-1530076881881-3f8d5cf2a10d?auto=format&fit=crop&w=1600&q=80'
+      };
+    } else {
+      return {
+        bg: 'bg-slate-950',
+        overlay: 'bg-gradient-to-b from-slate-950/95 via-slate-900/40 to-slate-950/98',
+        navBtnActive: 'bg-gradient-to-r from-slate-800 to-slate-700 text-teal-400 shadow-sm border border-slate-700/50',
+        navBtnInactive: 'text-slate-400 hover:text-slate-200',
+        cardBg: 'bg-slate-900/40 border-slate-800 shadow-slate-950/20',
+        accentText: 'text-teal-400',
+        accentBg: 'bg-teal-500',
+        accentBorder: 'border-slate-800',
+        accentGlow: 'shadow-none',
+        accentRing: 'focus:ring-teal-500',
+        logoText: 'from-teal-400 via-emerald-400 to-amber-300',
+        bannerImg: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80'
+      };
+    }
   };
+
+  const theme = getThemeClasses();
 
   return (
-    <div style={getDynamicBg()} className={`min-h-screen text-slate-100 font-sans transition-all duration-700 ease-in-out ${getThemeSelection()}`}>
+    <div 
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(2, 6, 23, 0.88), rgba(2, 6, 23, 0.98)), url('${theme.bannerImg}')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }} 
+      className="min-h-screen text-slate-100 font-sans transition-all duration-700 ease-in-out"
+    >
       
       {/* HEADER / ТАКТИЧЕСКИЙ БАР */}
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 py-3 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-tr from-teal-500 to-emerald-400 p-2 rounded-xl text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+          <div className={`p-2 rounded-xl text-slate-950 transition-all duration-500 ${theme.accentBg} ${theme.accentGlow}`}>
             <Cpu className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <h1 className={`text-lg font-bold tracking-tight bg-gradient-to-r ${
-              activeTab === 'palawan' ? 'from-cyan-400 via-sky-400 to-teal-300' :
-              activeTab === 'costarica' ? 'from-emerald-400 via-green-400 to-amber-300' :
-              'from-teal-400 via-emerald-400 to-amber-300'
-            } bg-clip-text text-transparent transition-all duration-500`}>
+            <h1 className={`text-lg font-bold tracking-tight bg-gradient-to-r bg-clip-text text-transparent transition-all duration-500 ${theme.logoText}`}>
               ECO-SYNAPSE PWA
             </h1>
-            <p className="text-xs text-slate-400 font-mono">Autonomous Bi-Farm Controller [v1.2.0-offline]</p>
+            <p className="text-xs text-slate-400 font-mono">Autonomous Bi-Farm Controller [v1.3.0-offline]</p>
           </div>
         </div>
 
@@ -220,33 +259,21 @@ export default function App() {
         <div className="flex bg-slate-900 border border-slate-800 p-1 rounded-xl w-full sm:w-auto overflow-x-auto">
           <button 
             onClick={() => setActiveTab('global')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${
-              activeTab === 'global' 
-                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(20,184,166,0.4)]' 
-                : 'text-slate-400 hover:text-teal-400'
-            }`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-500 ${activeTab === 'global' ? theme.navBtnActive : theme.navBtnInactive}`}
           >
             <Home className="w-3.5 h-3.5" />
             Глобальный Обзор
           </button>
           <button 
             onClick={() => setActiveTab('palawan')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${
-              activeTab === 'palawan' 
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(34,211,238,0.4)]' 
-                : 'text-slate-400 hover:text-cyan-400'
-            }`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-500 ${activeTab === 'palawan' ? theme.navBtnActive : theme.navBtnInactive}`}
           >
             <Anchor className="w-3.5 h-3.5" />
             Ферма 1: Палаван (Морская)
           </button>
           <button 
             onClick={() => setActiveTab('costarica')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${
-              activeTab === 'costarica' 
-                ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.4)]' 
-                : 'text-slate-400 hover:text-emerald-400'
-            }`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-500 ${activeTab === 'costarica' ? theme.navBtnActive : theme.navBtnInactive}`}
           >
             <Feather className="w-3.5 h-3.5" />
             Ферма 2: Коста-Рика (Агро)
@@ -268,14 +295,14 @@ export default function App() {
       <main className="p-4 lg:p-8 max-w-[1600px] mx-auto space-y-8">
         
         {/* КАРТОЧКА ПОДДЕРЖКИ PWA АЛЕРТА */}
-        <div className="bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-amber-500/10 border border-teal-500/20 p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className={`bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-amber-500/10 border ${theme.accentBorder} p-4 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4`}>
           <div className="flex gap-3">
-            <div className="p-2 bg-teal-500/20 rounded-xl text-teal-300 self-start">
+            <div className={`p-2 rounded-xl self-start ${activeTab === 'palawan' ? 'bg-cyan-500/20 text-cyan-300' : activeTab === 'costarica' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-teal-500/20 text-teal-300'}`}>
               <Zap className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-semibold text-sm">Дашборд готов к автономной оффлайн-работе (PWA)</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Вся статистика сохраняется в IndexedDB на вашем устройстве и синхронизируется при возобновлении связи.</p>
+              <p className="text-xs text-slate-400 mt-0.5 font-mono">Все логи датчиков и сессии ИИ кэшируются локально на вашем девайсе в IndexedDB.</p>
             </div>
           </div>
           <button className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-4 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors">
@@ -283,745 +310,776 @@ export default function App() {
           </button>
         </div>
 
-        {/* 1. ГЛАВНЫЙ ЭКРАН / ОБЗОР МЕТРИК И ВРЕМЕНИ */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* КАРТА-ВИДЖЕТ: ПАЛАВАН */}
-          {(activeTab === 'global' || activeTab === 'palawan') && (
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-slate-800 p-6 shadow-xl backdrop-blur-md">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 blur-3xl rounded-full"></div>
+        {/* ==================== 1. ГЛАВНЫЙ ЭКРАН / ГЛОБАЛЬНЫЙ ОБЗОР ==================== */}
+        {activeTab === 'global' && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* Заголовок */}
+            <div>
+              <h2 className="text-2xl font-black text-slate-100 flex items-center gap-2">
+                <Layers className="w-6 h-6 text-teal-400" /> Глобальная Консоль Управления
+              </h2>
+              <p className="text-xs text-slate-400 mt-1 font-mono">Управление автономными агро- и марикультурными нодами в реальном времени</p>
+            </div>
+
+            {/* Две фермы бок-о-бок */}
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              {/* Фото-баннер Палаван */}
-              <div className="h-40 rounded-2xl mb-6 overflow-hidden relative border border-teal-500/20 group">
-                <img 
-                  src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80" 
-                  alt="Palawan Lagoon" 
-                  className="w-full h-full object-cover brightness-[0.75] group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
-                <span className="absolute bottom-3 left-3 bg-teal-950/80 text-teal-300 border border-teal-500/30 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wider uppercase">
-                  📍 Остров Палаван • База Pearl Farming
-                </span>
-              </div>
-
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-teal-400">Ферма 1 • Филиппины</span>
-                  <h2 className="text-2xl font-black text-slate-100 mt-1">Палаван</h2>
-                  <p className="text-xs text-teal-200/60 mt-0.5">Морская IMTA Аквакультура</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-mono font-bold tracking-wider text-slate-100">{timePalawan || '--:--:--'}</p>
-                  <p className="text-xs text-slate-400 font-mono">GMT+8 (UTC+8)</p>
-                </div>
-              </div>
-
-              {/* МЕТРИКИ ПАЛАВАНА */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center text-slate-400 mb-2">
-                    <span className="text-xs">Вода Temp</span>
-                    <Thermometer className="w-4 h-4 text-teal-400" />
-                  </div>
-                  <div className="text-lg font-bold font-mono text-teal-300">{telemetry.palawan.temp}°C</div>
-                  <span className="text-[10px] text-emerald-400">Оптимально</span>
-                </div>
-
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center text-slate-400 mb-2">
-                    <span className="text-xs">Кислород DO</span>
-                    <Activity className="w-4 h-4 text-sky-400" />
-                  </div>
-                  <div className="text-lg font-bold font-mono text-slate-100">{telemetry.palawan.do} мг/л</div>
-                  <span className="text-[10px] text-emerald-400">Стабильно</span>
-                </div>
-
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center text-slate-400 mb-2">
-                    <span className="text-xs">Кислотность pH</span>
-                    <Beaker className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <div className="text-lg font-bold font-mono text-slate-100">{telemetry.palawan.pH}</div>
-                  <span className="text-[10px] text-amber-400">Слабощелочная</span>
-                </div>
-
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center text-slate-400 mb-2">
-                    <span className="text-xs">Соленость</span>
-                    <Droplet className="w-4 h-4 text-blue-400" />
-                  </div>
-                  <div className="text-lg font-bold font-mono text-slate-100">{telemetry.palawan.salinity} ‰</div>
-                  <span className="text-[10px] text-emerald-400">Норма океана</span>
-                </div>
-              </div>
-
-              {/* БЕЗОПАСНОСТЬ ИИ */}
-              <div className="mt-5 p-4 rounded-2xl bg-teal-950/20 border border-teal-500/30 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <span className="absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
-                    <Radio className="w-5 h-5 text-teal-400 relative" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-teal-300">ANTI-POACHING AI RADAR</h4>
-                    <p className="text-[10px] text-slate-400">Буи и оптические камеры активны</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30 font-mono">
-                  {telemetry.palawan.status}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* КАРТА-ВИДЖЕТ: КОСТА-РИКА */}
-          {(activeTab === 'global' || activeTab === 'costarica') && (
-            <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-slate-800 p-6 shadow-xl backdrop-blur-md">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full"></div>
-              
-              {/* Фото-баннер Коста-Рика */}
-              <div className="h-40 rounded-2xl mb-6 overflow-hidden relative border border-emerald-500/20 group">
-                <img 
-                  src="https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=800&q=80" 
-                  alt="Costa Rica Farms" 
-                  className="w-full h-full object-cover brightness-[0.75] group-hover:scale-105 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
-                <span className="absolute bottom-3 left-3 bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wider uppercase">
-                  📍 Монтеверде • Высокогорный кофе и дикая ваниль
-                </span>
-              </div>
-
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Ферма 2 • Центральная Америка</span>
-                  <h2 className="text-2xl font-black text-slate-100 mt-1">Коста-Рика</h2>
-                  <p className="text-xs text-emerald-200/60 mt-0.5">Высокогорная Пермакультура</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-mono font-bold tracking-wider text-slate-100">{timeCostaRica || '--:--:--'}</p>
-                  <p className="text-xs text-slate-400 font-mono">GMT-6 (UTC-6)</p>
-                </div>
-              </div>
-
-              {/* МЕТРИКИ КОСТА-РИКИ */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center text-slate-400 mb-2">
-                    <span className="text-xs">Влажн. Почвы</span>
-                    <Droplet className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="text-lg font-bold font-mono text-emerald-300">{telemetry.costarica.soilMoisture}%</div>
-                  <span className="text-[10px] text-emerald-400">Влажная почва</span>
-                </div>
-
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center text-slate-400 mb-2">
-                    <span className="text-xs">Темп. Воздуха</span>
-                    <Thermometer className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div className="text-lg font-bold font-mono text-slate-100">{telemetry.costarica.airTemp}°C</div>
-                  <span className="text-[10px] text-slate-400">Утренний бриз</span>
-                </div>
-
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center text-slate-400 mb-2">
-                    <span className="text-xs">Осадки (24ч)</span>
-                    <CloudRain className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <div className="text-lg font-bold font-mono text-slate-100">{telemetry.costarica.rain} мм</div>
-                  <span className="text-[10px] text-indigo-300">Умеренные</span>
-                </div>
-
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center text-slate-400 mb-2">
-                    <span className="text-xs">Пасека Здоровье</span>
-                    <Heart className="w-4 h-4 text-yellow-400" />
-                  </div>
-                  <div className="text-lg font-bold font-mono text-yellow-400">{telemetry.costarica.hivesHealth}%</div>
-                  <span className="text-[10px] text-yellow-500 font-bold">Активный медосбор</span>
-                </div>
-              </div>
-
-              {/* МЕТРИКА ЦВЕТЕНИЯ */}
-              <div className="mt-5 p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Sun className="w-5 h-5 text-amber-400" />
-                  <div>
-                    <h4 className="text-xs font-bold text-emerald-300">ИНДЕКС ЦВЕТЕНИЯ (BLOOM INDEX)</h4>
-                    <p className="text-[10px] text-slate-400">Кофе & Дикая Ваниль готовы к опылению</p>
-                  </div>
-                </div>
-                <span className="text-xs font-bold px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30 font-mono">
-                  {telemetry.costarica.bloomIndex}%
-                </span>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* 2. СПЕЦИАЛЬНЫЕ МОДУЛИ УЧЕТА ПО ЛОКАЦИЯМ */}
-        {activeTab === 'palawan' && (
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* ТРЕКЕР ДЛИННЫХ ЛИНИЙ И КАРТЫ СЕТОК */}
-            <div className="lg:col-span-2 bg-slate-900/30 border border-slate-800 p-6 rounded-3xl space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-teal-400">
-                  <Layers className="w-5 h-5" /> Карта Длинных Линий (Longlines) & Садов
-                </h3>
-                <span className="text-xs bg-teal-500/10 text-teal-300 px-3 py-1 rounded-full border border-teal-500/20">3 Линии в море</span>
-              </div>
-
-              {/* ИНТЕРАКТИВНЫЙ МАКЕТ СЕТОК */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[1, 2, 3].map(line => (
-                  <div key={line} className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="font-bold text-sm">Линия Л-{line}</span>
-                      <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">OK</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Нагрузка:</span> <span className="font-mono text-slate-200">12 сеток</span>
-                      </div>
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Жемчужницы:</span> <span className="font-mono text-slate-200">480 шт</span>
-                      </div>
-                      <div className="flex justify-between text-xs text-slate-400">
-                        <span>Текущий статус:</span> <span className="text-teal-400 text-xs">Стабильно</span>
-                      </div>
-                    </div>
-                    {/* Визуальная заполненность линии */}
-                    <div className="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
-                      <div className="bg-gradient-to-r from-teal-500 to-sky-400 h-1.5" style={{ width: line === 1 ? '90%' : line === 2 ? '75%' : '60%' }}></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* RFID Сканнер сеток */}
-              <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-                <h4 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                  <Rss className="w-4 h-4 text-teal-400" /> RFID-Сканирование Сеток в море
-                </h4>
-                <form onSubmit={handleRfidScan} className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Пример: RFID-PAL-001, RFID-PAL-002"
-                    value={rfidSearch}
-                    onChange={(e) => setRfidSearch(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 flex-1 font-mono"
+              {/* ВИДЖЕТ: ПАЛАВАН (Глобальный превью) */}
+              <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-slate-800 p-6 shadow-xl backdrop-blur-md hover:border-cyan-500/30 transition-all duration-300">
+                {/* Фото-баннер Палаван */}
+                <div className="h-44 rounded-2xl mb-6 overflow-hidden relative border border-teal-500/20 group">
+                  <img 
+                    src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80" 
+                    alt="Palawan Lagoon" 
+                    className="w-full h-full object-cover brightness-[0.75] group-hover:scale-105 transition-transform duration-700"
                   />
-                  <button type="submit" className="bg-teal-500 text-slate-950 px-4 py-2 rounded-xl text-sm font-bold hover:bg-teal-400 transition-colors">
-                    Сканировать
-                  </button>
-                </form>
-
-                {/* Результат сканирования */}
-                {scannedItem && (
-                  <div className="bg-slate-950/80 p-4 rounded-xl border border-slate-800 text-xs space-y-2 animate-fadeIn">
-                    {scannedItem.error ? (
-                      <span className="text-rose-400">{scannedItem.error}</span>
-                    ) : (
-                      <>
-                        <div className="flex justify-between border-b border-slate-800 pb-1">
-                          <span className="text-slate-400 font-semibold">Объект:</span>
-                          <span className="text-teal-300 font-bold">{scannedItem.type}</span>
-                        </div>
-                        <div className="flex justify-between border-b border-slate-800 pb-1">
-                          <span className="text-slate-400">Возраст биомассы:</span>
-                          <span className="text-slate-200 font-mono">{scannedItem.age}</span>
-                        </div>
-                        <div className="flex justify-between border-b border-slate-800 pb-1">
-                          <span className="text-slate-400">Плотность посадки:</span>
-                          <span className="text-slate-200 font-mono">{scannedItem.density}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Последняя чистка:</span>
-                          <span className="text-slate-200 font-mono">{scannedItem.lastCleaned}</span>
-                        </div>
-                        <div className="flex justify-between pt-1">
-                          <span className="text-slate-400">Статус сетки:</span>
-                          <span className={`font-bold ${scannedItem.status.includes('Требуется') ? 'text-amber-400' : 'text-emerald-400'}`}>
-                            {scannedItem.status}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* СПРАВА: ЧЕК-ЛИСТ ЧИСТКИ И РЕГИСТРАЦИЯ ПАДЕЖА */}
-            <div className="bg-slate-900/30 border border-slate-800 p-6 rounded-3xl space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-teal-400">Морской Чек-лист</h3>
-                <p className="text-xs text-slate-400 mt-1">Регулярное обслуживание линий IMTA</p>
-              </div>
-
-              {/* Чек-лист */}
-              <div className="space-y-3">
-                {cleaningChecklist.map(task => (
-                  <label key={task.id} className="flex items-start gap-3 p-3 bg-slate-900/80 rounded-xl border border-slate-800 cursor-pointer hover:border-teal-500/40 transition-colors">
-                    <input 
-                      type="checkbox"
-                      checked={task.done}
-                      onChange={() => {
-                        setCleaningChecklist(prev => prev.map(t => t.id === task.id ? { ...t, done: !t.done } : t));
-                      }}
-                      className="mt-0.5 rounded text-teal-500 focus:ring-teal-500 bg-slate-950 border-slate-800 w-4 h-4"
-                    />
-                    <span className={`text-xs ${task.done ? 'line-through text-slate-500' : 'text-slate-200'}`}>{task.label}</span>
-                  </label>
-                ))}
-              </div>
-
-              {/* РЕГИСТРАЦИЯ ПАДЕЖА (IndexedDB) */}
-              <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-4">
-                <h4 className="text-sm font-bold text-rose-400 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Учет смертности/падежа биомассы
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <input 
-                    type="number" 
-                    placeholder="Кол-во (шт)"
-                    value={newMortality.qty}
-                    onChange={(e) => setNewMortality({ ...newMortality, qty: e.target.value })}
-                    className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                  />
-                  <select 
-                    value={newMortality.cause}
-                    onChange={(e) => setNewMortality({ ...newMortality, cause: e.target.value })}
-                    className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                  >
-                    <option value="Естественный отбор">Естеств. отбор</option>
-                    <option value="Хищники">Хищники</option>
-                    <option value="Паразиты">Паразиты</option>
-                    <option value="Механич. повреждение">Мех. повреждение</option>
-                  </select>
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
+                  <span className="absolute bottom-3 left-3 bg-teal-950/85 text-cyan-300 border border-cyan-500/30 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wider uppercase font-mono">
+                    📍 Остров Палаван • База Pearl Farming
+                  </span>
                 </div>
+
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-cyan-400">Ферма 1 • Филиппины</span>
+                    <h2 className="text-2xl font-black text-slate-100 mt-1">Палаван</h2>
+                    <p className="text-xs text-teal-200/60 mt-0.5">Морская IMTA Аквакультура</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-mono font-bold tracking-wider text-slate-100">{timePalawan || '--:--:--'}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">GMT+8 (UTC+8)</p>
+                  </div>
+                </div>
+
+                {/* Главные Метрики */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <div className="text-[10px] text-slate-400 uppercase">Температура воды</div>
+                    <div className="text-lg font-bold font-mono text-cyan-300">{telemetry.palawan.temp}°C</div>
+                  </div>
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <div className="text-[10px] text-slate-400 uppercase">Кислород DO</div>
+                    <div className="text-lg font-bold font-mono text-slate-100">{telemetry.palawan.do} мг/л</div>
+                  </div>
+                </div>
+
                 <button 
-                  onClick={() => {
-                    if (!newMortality.qty) return;
-                    setMortalityLog([{
-                      date: new Date().toISOString().split('T')[0],
-                      type: 'Жемчужницы (Pinctada)',
-                      qty: parseInt(newMortality.qty),
-                      cause: newMortality.cause
-                    }, ...mortalityLog]);
-                    setNewMortality({ qty: '', cause: 'Естественный отбор' });
-                  }}
-                  className="w-full bg-rose-600 hover:bg-rose-500 text-slate-100 font-bold text-xs py-2 rounded-lg transition-colors"
+                  onClick={() => setActiveTab('palawan')}
+                  className="w-full mt-4 bg-slate-950 border border-slate-800 hover:border-cyan-500/40 text-cyan-400 font-bold text-xs py-2 rounded-xl transition-all flex items-center justify-center gap-1"
                 >
-                  Зарегистрировать падеж в БД
+                  Войти в панель Палавана <Navigation className="w-3 h-3" />
                 </button>
+              </div>
 
-                {/* Журнал смертности */}
-                <div className="space-y-1 pt-2 max-h-[100px] overflow-y-auto">
-                  {mortalityLog.map((log, idx) => (
-                    <div key={idx} className="flex justify-between text-[10px] text-slate-400 border-b border-slate-800/60 pb-1">
-                      <span>{log.date} — {log.qty} шт ({log.cause})</span>
-                      <span className="text-rose-400">Зарегистрировано</span>
-                    </div>
-                  ))}
+              {/* ВИДЖЕТ: КОСТА-РИКА (Глобальный превью) */}
+              <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-slate-800 p-6 shadow-xl backdrop-blur-md hover:border-emerald-500/30 transition-all duration-300">
+                {/* Фото-баннер Коста-Рика */}
+                <div className="h-44 rounded-2xl mb-6 overflow-hidden relative border border-emerald-500/20 group">
+                  <img 
+                    src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" 
+                    alt="Costa Rica Coffee cherries" 
+                    className="w-full h-full object-cover brightness-[0.75] group-hover:scale-105 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
+                  <span className="absolute bottom-3 left-3 bg-slate-950/85 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wider uppercase font-mono">
+                    📍 Монтеверде • Высокогорные плантации кофе
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Ферма 2 • Центральная Америка</span>
+                    <h2 className="text-2xl font-black text-slate-100 mt-1">Коста-Рика</h2>
+                    <p className="text-xs text-emerald-200/60 mt-0.5">Высокогорная Пермакультура</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-mono font-bold tracking-wider text-slate-100">{timeCostaRica || '--:--:--'}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">GMT-6 (UTC-6)</p>
+                  </div>
+                </div>
+
+                {/* Главные Метрики */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <div className="text-[10px] text-slate-400 uppercase">Влажность почвы</div>
+                    <div className="text-lg font-bold font-mono text-emerald-300">{telemetry.costarica.soilMoisture}%</div>
+                  </div>
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
+                    <div className="text-[10px] text-slate-400 uppercase">Пасека Здоровье</div>
+                    <div className="text-lg font-bold font-mono text-yellow-400">{telemetry.costarica.hivesHealth}%</div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setActiveTab('costarica')}
+                  className="w-full mt-4 bg-slate-950 border border-slate-800 hover:border-emerald-500/40 text-emerald-400 font-bold text-xs py-2 rounded-xl transition-all flex items-center justify-center gap-1"
+                >
+                  Войти в панель Коста-Рики <Navigation className="w-3 h-3" />
+                </button>
+              </div>
+
+            </section>
+
+            {/* Чистый статус нод внизу глобальной вкладки без датчиков и ИИ */}
+            <div className="bg-slate-900/20 rounded-2xl border border-slate-800 p-6 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
+              <div className="flex items-center gap-3">
+                <Database className="w-5 h-5 text-teal-400" />
+                <div>
+                  <h4 className="font-bold text-slate-200">Автономные локальные ноды синхронизированы</h4>
+                  <p className="text-[11px] text-slate-500">Системы Palawan-Marine-01 и Costarica-Agro-02 работают в режиме Offline-First</p>
                 </div>
               </div>
+              <div className="flex gap-4 font-mono text-[10px] text-slate-400">
+                <div>Морской AI Радар: <span className="text-emerald-400">Secure</span></div>
+                <div>Апи-датчики: <span className="text-emerald-400">94% OK</span></div>
+                <div>IndexedDB: <span className="text-teal-400">0ms latency</span></div>
+              </div>
             </div>
-          </section>
+          </div>
         )}
 
-        {activeTab === 'costarica' && (
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* ТРЕКИНГ КОФЕ & КАКАО & ВАНИЛИ */}
-            <div className="lg:col-span-2 bg-slate-900/30 border border-slate-800 p-6 rounded-3xl space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-400">
-                  <Layers className="w-5 h-5" /> Учет лотов Кофе, Какао и Ванили
-                </h3>
-                <span className="text-xs bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/20">Сезон сбора урожая 2026</span>
+        {/* ==================== 2. СЕГМЕНТ: ПАЛАВАН (100% МОРСКАЯ СТИЛИСТИКА) ==================== */}
+        {activeTab === 'palawan' && (
+          <div className="space-y-8 animate-fadeIn">
+            
+            {/* Заголовок */}
+            <div>
+              <h2 className="text-2xl font-black text-slate-100 flex items-center gap-2">
+                <Anchor className="w-6 h-6 text-cyan-400" /> Морская Нода: Остров Палаван (Филиппины)
+              </h2>
+              <p className="text-xs text-slate-400 mt-1 font-mono">Система мониторинга садковой аквакультуры и ИИ-контроля жемчуга Pinctada maxima</p>
+            </div>
+
+            {/* Телеметрия + Специфические Локальные Модули */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* ЛЕВАЯ КОЛОНКА: Телеметрия с фото (4 колонки) */}
+              <div className="lg:col-span-4 space-y-6">
+                <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-cyan-500/20 p-6 shadow-xl backdrop-blur-md">
+                  {/* Фото-баннер */}
+                  <div className="h-44 rounded-2xl mb-6 overflow-hidden relative border border-cyan-500/30">
+                    <img 
+                      src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80" 
+                      alt="Palawan Lagoon" 
+                      className="w-full h-full object-cover brightness-[0.75]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
+                    <span className="absolute bottom-3 left-3 bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wider uppercase font-mono">
+                      🌊 Бухта лагуны Палаван
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-sm text-cyan-400 uppercase tracking-wider">IoT-Телеметрия Сенсоров</h3>
+                    <div className="text-right">
+                      <p className="text-lg font-mono font-bold text-slate-100">{timePalawan}</p>
+                    </div>
+                  </div>
+
+                  {/* Метрики */}
+                  <div className="space-y-3">
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-slate-400">Температура воды</div>
+                        <div className="text-[10px] text-emerald-400">Нормальный диапазон</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold font-mono text-cyan-300">{telemetry.palawan.temp}°C</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-slate-400">Растворенный кислород (DO)</div>
+                        <div className="text-[10px] text-emerald-400">Оптимальный замер</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold font-mono text-slate-100">{telemetry.palawan.do} мг/л</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-slate-400">Кислотность воды (pH)</div>
+                        <div className="text-[10px] text-amber-400">Слабощелочная среда</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold font-mono text-slate-100">{telemetry.palawan.pH}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-slate-400">Соленость океана</div>
+                        <div className="text-[10px] text-emerald-400">34.2 PSU Стандарт</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold font-mono text-slate-100">{telemetry.palawan.salinity} ‰</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Статус ИИ-Радара */}
+                  <div className="mt-5 p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+                      <div className="text-[11px] font-bold text-cyan-300">ANTI-POACHING AI RADAR</div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30">
+                      {telemetry.palawan.status}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Кофе и Какао микро-партии */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {COFFEE_BATCHES.map(batch => (
-                  <div key={batch.id} className="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold text-sm text-amber-400 font-mono">{batch.id}</span>
-                      <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">{batch.variety}</span>
+              {/* ПРАВАЯ КОЛОНКА: Сетки + RFID + Чеклисты (8 колонок) */}
+              <div className="lg:col-span-8 space-y-6">
+                <div className="bg-slate-900/40 border border-cyan-500/20 p-6 rounded-3xl space-y-6 backdrop-blur-md">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-400">
+                      <Layers className="w-5 h-5" /> Карта Длинных Линий (Longlines) & Садов
+                    </h3>
+                    <span className="text-xs bg-cyan-500/10 text-cyan-300 px-3 py-1 rounded-full border border-cyan-500/20 font-mono">3 Линии в заливе</span>
+                  </div>
+
+                  {/* Макет Сеток */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 2, 3].map(line => (
+                      <div key={line} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-bold text-sm">Линия Л-{line}</span>
+                          <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full font-mono">OK</span>
+                        </div>
+                        <div className="space-y-1 text-xs text-slate-400">
+                          <div className="flex justify-between"><span>Нагрузка:</span> <span className="font-mono text-slate-200">12 сеток</span></div>
+                          <div className="flex justify-between"><span>Жемчужницы:</span> <span className="font-mono text-slate-200">480 шт</span></div>
+                        </div>
+                        {/* Полоса заполненности в цветах Cyan */}
+                        <div className="w-full bg-slate-800 rounded-full h-1.5 mt-3 overflow-hidden">
+                          <div className="bg-gradient-to-r from-cyan-500 to-teal-400 h-1.5" style={{ width: line === 1 ? '90%' : line === 2 ? '75%' : '60%' }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* RFID Сканнер сеток */}
+                  <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
+                    <h4 className="text-xs font-bold text-cyan-300 uppercase flex items-center gap-2 tracking-wider">
+                      <Rss className="w-4 h-4" /> RFID-Сканирование Сеток в море
+                    </h4>
+                    <form onSubmit={handleRfidScan} className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Введите метку (напр. RFID-PAL-001, RFID-PAL-002)"
+                        value={rfidSearch}
+                        onChange={(e) => setRfidSearch(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 flex-1 font-mono"
+                      />
+                      <button type="submit" className="bg-cyan-500 text-slate-950 px-4 py-2 rounded-xl text-sm font-bold hover:bg-cyan-400 transition-colors">
+                        Сканировать
+                      </button>
+                    </form>
+
+                    {scannedItem && (
+                      <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs space-y-2 animate-fadeIn">
+                        {scannedItem.error ? (
+                          <span className="text-rose-400 font-mono">{scannedItem.error}</span>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="border-b border-slate-800 pb-1"><span className="text-slate-400">Объект:</span> <strong className="text-cyan-300">{scannedItem.type}</strong></div>
+                            <div className="border-b border-slate-800 pb-1"><span className="text-slate-400">Возраст биомассы:</span> <span className="font-mono text-slate-200">{scannedItem.age}</span></div>
+                            <div className="border-b border-slate-800 pb-1"><span className="text-slate-400">Плотность:</span> <span className="font-mono text-slate-200">{scannedItem.density}</span></div>
+                            <div className="border-b border-slate-800 pb-1"><span className="text-slate-400">Статус:</span> <span className="text-emerald-400 font-bold">{scannedItem.status}</span></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* СПЕЦИАЛЬНЫЕ ИНТЕГРИРОВАННЫЕ БЛОКИ: Модуль ИИ-Экспертизы Жемчуга + Журнал Охраны Палавана (БОК-О-БОК) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* 1. ИНТЕГРИРОВАННЫЙ ИИ-СКАНЕР ЖЕМЧУГА */}
+              <section className="bg-slate-900/40 border border-cyan-500/20 rounded-3xl p-6 space-y-6 backdrop-blur-md">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-400">
+                    <Cpu className="text-cyan-400 w-5 h-5 animate-pulse" /> Автокалибровка Жемчуга Pinctada
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">Определение сорта и качества перламутрового люстра в режиме офлайн</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  {/* Интерактивное окно камеры с реальным фото */}
+                  <div className="bg-slate-950 border border-dashed border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 hover:border-cyan-500/50 transition-all cursor-pointer relative overflow-hidden min-h-[300px]">
+                    {palawanAiResult || palawanAiAnalyzing ? (
+                      <div className="absolute inset-0 w-full h-full animate-fadeIn">
+                        <img 
+                          src="https://images.unsplash.com/photo-1515688594390-b649af70d282?auto=format&fit=crop&w=600&q=80" 
+                          alt="AI Pearl Scan" 
+                          className="w-full h-full object-cover brightness-[0.7] contrast-[1.05]"
+                        />
+                        {/* Голубой лазер */}
+                        <div className="absolute left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_8px_rgba(34,211,238,0.8)] animate-bounce" style={{ top: '35%', animationDuration: '3s' }}></div>
+                        
+                        {!palawanAiAnalyzing && palawanAiResult && (
+                          <div className="absolute inset-4 border-2 border-dashed rounded-xl border-cyan-400/40 flex items-center justify-center">
+                            <div className="bg-slate-950/90 border border-cyan-400/40 p-2.5 rounded-lg text-[10px] text-cyan-300 font-mono text-left absolute top-4 left-4">
+                              <div className="font-bold border-b border-cyan-400/20 pb-0.5 mb-1 flex items-center gap-1">
+                                <Cpu className="w-3 h-3 animate-spin" /> TF.js WASM Node
+                              </div>
+                              <div>Калибр: <span className="text-white font-bold">Pinctada Pearl</span></div>
+                              <div>Люстр: <span className="text-cyan-400 font-bold">Perfect Mirror</span></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4 flex flex-col items-center">
+                        <div className="p-4 bg-slate-900 rounded-full border border-slate-800">
+                          <Camera className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-300">Камера ИИ-Оценки Жемчужниц</h4>
+                          <p className="text-xs text-slate-500 mt-1">AI определит сферичность, калибр и зеркальность перламутрового слоя</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Кнопки управления */}
+                    <div className="flex gap-2 z-10 mt-auto bg-slate-950/90 p-2 rounded-xl border border-slate-800">
+                      <button 
+                        onClick={runPalawanAi}
+                        disabled={palawanAiAnalyzing}
+                        className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50"
+                      >
+                        {palawanAiAnalyzing ? 'Калибровка...' : 'Сканировать жемчуг'}
+                      </button>
+                      {(palawanAiResult || palawanAiAnalyzing) && (
+                        <button onClick={() => setPalawanAiResult(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700">
+                          Сбросить
+                        </button>
+                      )}
                     </div>
-                    <div className="space-y-1.5 text-xs text-slate-300">
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Стадия процесса:</span>
-                        <span className="font-semibold text-emerald-400">{batch.stage}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Влажность зерна:</span>
-                        <span className="font-mono">{batch.moisture}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Сахар BRIX:</span>
-                        <span className="font-mono text-amber-300">{batch.brix}</span>
-                      </div>
-                      {batch.hoursLeft && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Осталось времени:</span>
-                          <span className="font-mono text-cyan-400 animate-pulse">{batch.hoursLeft} часов</span>
+                  </div>
+
+                  {/* Результат */}
+                  <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 min-h-[150px] flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 font-mono">Вердикт AI Ноды</h4>
+                      {palawanAiAnalyzing && (
+                        <div className="space-y-3 py-2">
+                          <div className="flex items-center gap-2 text-xs text-slate-300">
+                            <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                            <span>Анализ сверточной сетью MobileNet-V3...</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div className="bg-cyan-500 h-1.5 rounded-full animate-pulse" style={{ width: '85%' }}></div>
+                          </div>
+                        </div>
+                      )}
+                      {!palawanAiAnalyzing && palawanAiResult && (
+                        <div className="space-y-3 animate-fadeIn">
+                          <span className="text-xs bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2.5 py-0.5 rounded-full font-bold font-mono">
+                            {palawanAiResult.grade}
+                          </span>
+                          <p className="text-xs text-slate-300 leading-relaxed">{palawanAiResult.desc}</p>
+                          <div className="text-[11px] text-slate-400 font-mono">Назначение раковины: <span className="text-emerald-400 font-bold">{palawanAiResult.shellUse}</span></div>
+                        </div>
+                      )}
+                      {!palawanAiAnalyzing && !palawanAiResult && (
+                        <div className="text-slate-500 text-xs text-center py-6 font-mono">
+                          Ожидание загрузки макро-снимка. Запустите ИИ-тест.
                         </div>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
 
-              {/* Ручное опыление ванили */}
-              <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 space-y-4">
-                <h4 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                  <Sun className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: '6s' }} /> Ручное Опыление Дикой Ванили (Vanilla planifolia)
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {vanillaPollinations.map(sec => (
-                    <div key={sec.id} className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2">
-                      <div className="flex justify-between font-bold">
-                        <span>Сектор: {sec.id}</span>
-                        <span className="text-emerald-400">{sec.count} лиан</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Сегодня опылено вручную:</span>
-                        <span className="text-amber-400 font-bold font-mono">{sec.pollinatedToday} цветков</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-400">Стадия созревания стручков:</span>
-                        <span className="text-slate-300">{sec.matureStatus}</span>
-                      </div>
-                    </div>
-                  ))}
                 </div>
+              </section>
 
-                {/* Быстрое внесение опыления */}
-                <div className="flex gap-2">
-                  <input 
-                    type="number" 
-                    placeholder="Внести опыленные сегодня цветки (+ шт)"
-                    value={newPollinationCount}
-                    onChange={(e) => setNewPollinationCount(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex-1 font-mono"
-                  />
-                  <button 
-                    onClick={() => {
-                      if (!newPollinationCount) return;
-                      setVanillaPollinations(prev => prev.map((s, i) => i === 0 ? {
-                        ...s,
-                        pollinatedToday: s.pollinatedToday + parseInt(newPollinationCount)
-                      } : s));
-                      setNewPollinationCount('');
-                    }}
-                    className="bg-emerald-500 text-slate-950 px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-400 transition-colors"
-                  >
-                    Записать в базу
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* СПРАВА: ПАСЕКА И КАРТА ПЛАНТАЦИИ */}
-            <div className="bg-slate-900/30 border border-slate-800 p-6 rounded-3xl space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-yellow-400 flex items-center gap-2">
-                  🐝 Контроль Пасеки (Апикультура)
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">Мониторинг ульев в тропических садах</p>
-              </div>
-
-              {/* Здоровье ульев */}
-              <div className="space-y-3">
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-semibold text-slate-300">Пчелиная Семья У-12 (Golden Italian)</span>
-                    <span className="text-xs text-rose-400 font-bold">Осмотр!</span>
-                  </div>
-                  <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2">
-                    <div className="bg-rose-500 h-1.5 rounded-full" style={{ width: '64%' }}></div>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1.5">Снижена звуковая активность до 68Гц. Возможно деление роя.</p>
-                </div>
-
-                <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-semibold text-slate-300">Пчелиная Семья У-15 (Carnica Mix)</span>
-                    <span className="text-xs text-emerald-400 font-bold">Здорова</span>
-                  </div>
-                  <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2">
-                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: '96%' }}></div>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1.5">Отличная летная работа, сбор нектара дикой ванили и кофе.</p>
-                </div>
-              </div>
-
-              {/* ИНТЕРАКТИВНЫЙ ВЫБОР СЕКТОРА ПЛАНТАЦИИ */}
-              <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Карта Участков</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Кофе Восток', 'Кофе Запад', 'Какао Низина', 'Сад Ванили'].map(sec => (
-                    <button 
-                      key={sec}
-                      onClick={() => setSelectedSector(sec)}
-                      className={`text-xs p-2.5 rounded-xl border font-semibold transition-all duration-300 ${selectedSector === sec ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md font-bold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'}`}
-                    >
-                      {sec}
-                    </button>
-                  ))}
-                </div>
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800/80 text-center text-xs">
-                  Активный сектор: <strong className="text-emerald-400 font-bold">{selectedSector}</strong>
-                  <div className="text-[10px] text-slate-500 mt-1">Опрыскивание микробиологическими ЭМ-препаратами завершено</div>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* 3. МОДУЛЬ ИИ-СОРТИРОВКИ И КОНТРОЛЯ КАЧЕСТВА */}
-        {activeTab !== 'global' && (
-          <section className={`bg-slate-900/30 border ${activeTab === 'palawan' ? 'border-cyan-500/20' : 'border-emerald-500/20'} rounded-3xl p-6 space-y-6 transition-colors duration-500`}>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h3 className="text-lg font-bold flex items-center gap-2 text-slate-100">
-                <Cpu className="text-amber-400 w-5 h-5 animate-pulse" /> Модуль ИИ-Сортировки и Экспертизы Качества
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">Локальный запуск компьютерного зрения WebNN / WASM (без отправки фото на сервер)</p>
-            </div>
-
-            {/* Выбор типа сортировки (заменен на авто-определение на основе активной вкладки) */}
-            <span className={`text-xs px-3 py-1.5 rounded-xl border font-bold transition-all duration-500 ${
-              activeTab === 'palawan' 
-                ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20' 
-                : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
-            }`}>
-              {activeTab === 'palawan' ? '🎯 Автокалибровка Жемчуга Pinctada' : '🎯 Экспертиза Качества Спешелти-Кофе'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Окно загрузки/камеры (Интерактивное с реальными фото!) */}
-            <div className={`bg-slate-950 border border-dashed border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 transition-all duration-500 cursor-pointer relative overflow-hidden min-h-[300px] ${
-              activeTab === 'palawan' ? 'hover:border-cyan-500/50' : 'hover:border-emerald-500/50'
-            }`}>
-              {aiResult || aiAnalyzing ? (
-                // Если запущен тест, показываем сканируемую фотографию с оверлеем!
-                <div className="absolute inset-0 w-full h-full animate-fadeIn">
-                  <img 
-                    src={aiSortingType === 'pearl' 
-                      ? "https://images.unsplash.com/photo-1515688594390-b649af70d282?auto=format&fit=crop&w=600&q=80" 
-                      : "https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80"
-                    } 
-                    alt="AI Скан" 
-                    className="w-full h-full object-cover brightness-[0.7] contrast-[1.05]"
-                  />
-                  {/* Сканирующий лазерный луч */}
-                  <div className={`absolute left-0 right-0 h-[3px] bg-gradient-to-r from-transparent ${
-                    activeTab === 'palawan' ? 'via-cyan-400' : 'via-emerald-400'
-                  } to-transparent shadow-[0_0_10px_rgba(${
-                    activeTab === 'palawan' ? '34,211,238,0.8' : '16,185,129,0.8'
-                  })] animate-bounce`} style={{ top: '35%', animationDuration: '3s' }}></div>
-                  
-                  {/* Нейро-рамка поверх */}
-                  {!aiAnalyzing && aiResult && (
-                    <div className={`absolute inset-4 border-2 border-dashed rounded-xl ${
-                      activeTab === 'palawan' ? 'border-cyan-400/40' : 'border-emerald-400/40'
-                    } flex items-center justify-center`}>
-                      <div className={`bg-slate-950/90 border ${
-                        activeTab === 'palawan' ? 'border-cyan-400/40 text-cyan-300' : 'border-emerald-400/40 text-emerald-300'
-                      } p-2.5 rounded-lg text-[10px] font-mono text-left max-w-[200px] shadow-2xl absolute top-4 left-4`}>
-                        <div className={`font-bold border-b ${
-                          activeTab === 'palawan' ? 'border-cyan-400/20' : 'border-emerald-400/20'
-                        } pb-0.5 mb-1 flex items-center gap-1`}>
-                          <Cpu className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} /> TensorFlow.js
-                        </div>
-                        <div>Распознано: <span className="text-white font-bold">{aiSortingType === 'pearl' ? 'Pinctada Pearl' : 'Coffea Arabica'}</span></div>
-                        <div>Уверенность: <span className="text-emerald-400 font-bold">98.7%</span></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                // Стандартное состояние заглушки
-                <div className="space-y-4 flex flex-col items-center">
-                  <div className="p-4 bg-slate-900 rounded-full border border-slate-800">
-                    <Camera className="w-8 h-8 text-slate-400" />
-                  </div>
+              {/* 2. ЛОКАЛЬНЫЙ ЖУРНАЛ ОХРАНЫ И РАДАРА ПАЛАВАНА */}
+              <section className="bg-slate-900/40 border border-cyan-500/20 rounded-3xl p-6 space-y-6 backdrop-blur-md">
+                <div className="flex justify-between items-center">
                   <div>
-                    <h4 className="text-sm font-bold text-slate-300">Камера ИИ-Экспертизы</h4>
-                    <p className="text-xs text-slate-500 mt-1">AI проанализирует жемчуг по калибру или выявит квакеры и дефекты ягод кофе</p>
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-cyan-400">
+                      <Shield className="text-cyan-400 w-5 h-5" /> Панель Охраны & IoT-Событий
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Локальное логирование AI-радаров и охраны акватории</p>
                   </div>
                 </div>
-              )}
-              
-              {/* Кнопки управления (всегда поверх фото) */}
-              <div className="flex gap-2 z-10 mt-auto bg-slate-950/90 p-2 rounded-xl border border-slate-800/80">
-                <button className="bg-slate-900 hover:bg-slate-800 text-xs font-bold text-slate-300 px-3 py-1.5 rounded-lg border border-slate-800 transition-colors">
-                  Выбрать снимок
-                </button>
-                <button 
-                  onClick={handleAiAnalysis}
-                  disabled={aiAnalyzing}
-                  className={`bg-gradient-to-tr ${
-                    activeTab === 'palawan' 
-                      ? 'from-cyan-500 to-teal-400 shadow-cyan-500/20' 
-                      : 'from-emerald-500 to-amber-400 shadow-emerald-500/20'
-                  } hover:brightness-110 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg transition-all disabled:opacity-50`}
-                >
-                  {aiAnalyzing ? 'Сканирование...' : 'Запустить ИИ-тест'}
-                </button>
-                {(aiResult || aiAnalyzing) && (
-                  <button 
-                    onClick={() => setAiResult(null)}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700"
-                  >
-                    Сброс
+
+                {/* Добавить алерт */}
+                <form onSubmit={handleAddPalawanAlert} className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Ввести лог береговой охраны..."
+                    value={newPalawanAlert}
+                    onChange={(e) => setNewPalawanAlert(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 flex-1 font-mono"
+                  />
+                  <button type="submit" className="bg-cyan-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-cyan-400 transition-colors">
+                    Внести событие
                   </button>
-                )}
-              </div>
+                </form>
+
+                {/* Список логов (Отфильтрован строго по Палавану!) */}
+                <div className="bg-slate-950 rounded-2xl border border-slate-850 overflow-hidden text-xs">
+                  <div className="grid grid-cols-12 bg-slate-900 px-4 py-2.5 font-bold text-slate-400 border-b border-slate-800">
+                    <div className="col-span-3">Время</div>
+                    <div className="col-span-6">Локация / Датчик</div>
+                    <div className="col-span-3 text-right">Статус</div>
+                  </div>
+                  <div className="divide-y divide-slate-900/80 max-h-[310px] overflow-y-auto">
+                    {securityLog.filter(log => log.location.includes('Палаван') || log.location.includes('Глобальная')).map((log) => (
+                      <div key={log.id} className="grid grid-cols-12 px-4 py-3 text-slate-300 hover:bg-slate-900/40 items-center">
+                        <div className="col-span-3 font-mono text-slate-500">{log.time}</div>
+                        <div className="col-span-6">
+                          <span className="font-bold text-cyan-300 font-mono text-[10px] block">{log.location}</span>
+                          <span className="text-slate-400 text-[11px] block">{log.event}</span>
+                        </div>
+                        <div className="col-span-3 text-right">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono ${
+                            log.severity === 'high' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'
+                          }`}>
+                            {log.severity.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </section>
+
             </div>
 
-            {/* Результат классификации */}
-            <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">
-                  {activeTab === 'palawan' ? 'Результат AI-Калибровки Жемчуга' : 'Результат AI-Анализа Дефектов'}
-                </h4>
-                
-                {aiAnalyzing && (
-                  <div className="space-y-4 py-4">
-                    <div className="flex items-center gap-3 text-sm text-slate-300">
-                      <RefreshCw className="w-4 h-4 text-amber-400 animate-spin" />
-                      <span>Локальный анализ сверточной сетью (MobileNet-V3)...</span>
-                    </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                      <div className={`bg-gradient-to-r ${
-                        activeTab === 'palawan' ? 'from-cyan-500 to-teal-400' : 'from-emerald-500 to-amber-400'
-                      } h-2 rounded-full animate-pulse`} style={{ width: '80%' }}></div>
-                    </div>
-                  </div>
-                )}
-
-                {!aiAnalyzing && aiResult && (
-                  <div className="space-y-4 animate-fadeIn">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs ${
-                        activeTab === 'palawan' 
-                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' 
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                      } px-2.5 py-1 rounded-full font-bold`}>
-                        {aiResult.grade}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-300 leading-relaxed">{aiResult.desc}</p>
-                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs">
-                      <strong className="text-slate-400">Технологическое назначение:</strong> 
-                      <p className={`font-bold mt-1 ${activeTab === 'palawan' ? 'text-cyan-400' : 'text-emerald-400'}`}>{aiResult.shellUse || aiResult.action}</p>
-                    </div>
-                  </div>
-                )}
-
-                {!aiAnalyzing && !aiResult && (
-                  <div className="text-slate-500 text-xs text-center py-10">
-                    Ожидание загрузки изображения. Запустите ИИ-тест для получения моментального вердикта.
-                  </div>
-                )}
-              </div>
-
-              <div className="text-[10px] text-slate-500 mt-4 border-t border-slate-800/60 pt-4">
-                Используется offline WebAssembly TensorFlow.js. База данных жемчуга Pinctada и арабики обучена на 50,000+ макро-снимках.
-              </div>
-            </div>
           </div>
-        </section>
         )}
 
-        {/* 4. БЕЗОПАСНОСТЬ, АЛЕРТЫ И ИНТЕРНЕТ ВЕЩЕЙ (IoT-ЛОГ) */}
-        <section className={`bg-slate-900/30 border ${
-          activeTab === 'palawan' ? 'border-cyan-500/20' :
-          activeTab === 'costarica' ? 'border-emerald-500/20' :
-          'border-slate-800'
-        } rounded-3xl p-6 space-y-6 transition-all duration-500`}>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* ==================== 3. СЕГМЕНТ: КОСТА-РИКА (100% АГРО СТИЛИСТИКА) ==================== */}
+        {activeTab === 'costarica' && (
+          <div className="space-y-8 animate-fadeIn">
+            
+            {/* Заголовок */}
             <div>
-              <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <Shield className="text-rose-500 w-5 h-5" /> {
-                  activeTab === 'palawan' ? 'Панель Мониторинга Охраны Палавана' :
-                  activeTab === 'costarica' ? 'Панель Контроля Микроклимата и Орошения' :
-                  'Единая Консоль Безопасности & IoT-Датчиков'
-                }
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">{
-                activeTab === 'palawan' ? 'Логи ИИ-радаров береговой охраны, датчиков глубины и состояния сеток' :
-                activeTab === 'costarica' ? 'Логи климатических станций, параметров ульев и датчиков влажности почвы' :
-                'Консоль логирования событий охраны Палавана и автополива/климата Коста-Рики'
-              }</p>
+              <h2 className="text-2xl font-black text-slate-100 flex items-center gap-2">
+                <Feather className="w-6 h-6 text-emerald-400" /> Агро-Нода: Пермакультура Коста-Рика
+              </h2>
+              <p className="text-xs text-slate-400 mt-1 font-mono">Система микроклимата, учета лотов спешелти кофе и ИИ-анализа дефектов зерен</p>
             </div>
 
-            {/* Форма симуляции ручного оповещения */}
-            <form onSubmit={handleAddAlert} className="flex gap-2 w-full sm:w-auto">
-              <input 
-                type="text" 
-                placeholder="Ввести тестовое событие..."
-                value={newAlertMessage}
-                onChange={(e) => setNewAlertMessage(e.target.value)}
-                className={`bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-1 ${
-                  activeTab === 'palawan' ? 'focus:ring-cyan-500' :
-                  activeTab === 'costarica' ? 'focus:ring-emerald-500' :
-                  'focus:ring-rose-500'
-                } flex-1 sm:w-64 font-mono`}
-              />
-              <button type="submit" className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                activeTab === 'palawan' ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_8px_rgba(34,211,238,0.3)]' :
-                activeTab === 'costarica' ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_8px_rgba(16,185,129,0.3)]' :
-                'bg-rose-600 hover:bg-rose-500 text-slate-100'
-              }`}>
-                Вызвать Алерт
-              </button>
-            </form>
-          </div>
-
-          {/* Журнал IoT-событий */}
-          <div className="bg-slate-950 rounded-2xl border border-slate-850 overflow-hidden">
-            <div className="grid grid-cols-12 bg-slate-900 px-4 py-3 text-xs font-bold text-slate-400 border-b border-slate-800">
-              <div className="col-span-2">Время</div>
-              <div className="col-span-3">Локация / Датчик</div>
-              <div className="col-span-5">Зафиксированное событие</div>
-              <div className="col-span-2 text-right">Статус угрозы</div>
-            </div>
-
-            <div className="divide-y divide-slate-900/80 max-h-[300px] overflow-y-auto">
-              {securityLog
-                .filter(log => {
-                  if (activeTab === 'global') return true;
-                  if (activeTab === 'palawan') return log.location.includes('Палаван');
-                  if (activeTab === 'costarica') return log.location.includes('Коста-Рика');
-                  return true;
-                })
-                .map((log) => (
-                <div key={log.id} className="grid grid-cols-12 px-4 py-3.5 text-xs text-slate-300 hover:bg-slate-900/40 items-center transition-colors">
-                  <div className="col-span-2 font-mono text-slate-500">{log.time}</div>
-                  <div className="col-span-3 font-semibold flex items-center gap-1.5">
-                    <span className={`h-1.5 w-1.5 rounded-full ${log.location.includes('Палаван') ? 'bg-teal-400' : 'bg-emerald-400'}`}></span>
-                    {log.location}
+            {/* Телеметрия + Специфические Локальные Модули */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* ЛЕВАЯ КОЛОНКА: Телеметрия с фото (4 колонки) */}
+              <div className="lg:col-span-4 space-y-6">
+                <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-emerald-500/20 p-6 shadow-xl backdrop-blur-md">
+                  {/* Фото-баннер БЕЗ КРОССОВОК! (Ягоды кофе на ветке) */}
+                  <div className="h-44 rounded-2xl mb-6 overflow-hidden relative border border-emerald-500/30">
+                    <img 
+                      src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" 
+                      alt="Coffee Farm cherries on branch" 
+                      className="w-full h-full object-cover brightness-[0.75]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
+                    <span className="absolute bottom-3 left-3 bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wider uppercase font-mono">
+                      🌱 Плантация Спешелти-Кофе
+                    </span>
                   </div>
-                  <div className="col-span-5 text-slate-400 font-mono">{log.event}</div>
-                  <div className="col-span-2 text-right">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      log.severity === 'high' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse' :
-                      log.severity === 'warning' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                      'bg-sky-500/10 text-sky-400 border border-sky-500/20'
-                    }`}>
-                      {log.severity.toUpperCase()}
+
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-sm text-emerald-400 uppercase tracking-wider">IoT-Телеметрия Микроклимата</h3>
+                    <div className="text-right">
+                      <p className="text-lg font-mono font-bold text-slate-100">{timeCostaRica}</p>
+                    </div>
+                  </div>
+
+                  {/* Метрики */}
+                  <div className="space-y-3">
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-slate-400">Влажность почвы (Soil)</div>
+                        <div className="text-[10px] text-emerald-400">Сектор А3 полит</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold font-mono text-emerald-300">{telemetry.costarica.soilMoisture}%</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-slate-400">Температура воздуха</div>
+                        <div className="text-[10px] text-slate-400">Утренний тропический бриз</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold font-mono text-slate-100">{telemetry.costarica.airTemp}°C</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-slate-400">Осадки за сутки</div>
+                        <div className="text-[10px] text-indigo-400">Умеренный дождь</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold font-mono text-slate-100">{telemetry.costarica.rain} мм</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 flex justify-between items-center">
+                      <div>
+                        <div className="text-xs text-slate-400">Здоровье пасеки ульев</div>
+                        <div className="text-[10px] text-yellow-500 font-bold">Опыление в процессе</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold font-mono text-yellow-400">{telemetry.costarica.hivesHealth}%</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Индекс цветения ванили */}
+                  <div className="mt-5 p-4 rounded-xl bg-emerald-950/20 border border-emerald-500/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sun className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: '8s' }} />
+                      <div className="text-[11px] font-bold text-emerald-300 uppercase tracking-wide">Vanilla Bloom Index</div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30 font-mono">
+                      {telemetry.costarica.bloomIndex}%
                     </span>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* ПРАВАЯ КОЛОНКА: Кофе + Ваниль + Карта участков (8 колонок) */}
+              <div className="lg:col-span-8 space-y-6">
+                <div className="bg-slate-900/40 border border-emerald-500/20 p-6 rounded-3xl space-y-6 backdrop-blur-md">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-400">
+                      <Layers className="w-5 h-5" /> Учет лотов Кофе, Какао и Ванили
+                    </h3>
+                    <span className="text-xs bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/20 font-mono">Сбор урожая 2026</span>
+                  </div>
+
+                  {/* Кофе и Какао микро-партии */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {COFFEE_BATCHES.map(batch => (
+                      <div key={batch.id} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-sm text-amber-400 font-mono">{batch.id}</span>
+                          <span className="text-[10px] bg-slate-900 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono">{batch.variety}</span>
+                        </div>
+                        <div className="space-y-1 text-xs text-slate-300">
+                          <div className="flex justify-between"><span className="text-slate-400">Стадия процесса:</span> <span className="font-semibold text-emerald-400">{batch.stage}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Влажность зерна:</span> <span className="font-mono">{batch.moisture}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400">Сахар BRIX:</span> <span className="font-mono text-amber-300">{batch.brix}</span></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Ручное опыление ванили */}
+                  <div className="bg-slate-950/60 p-5 rounded-2xl border border-slate-800 space-y-4">
+                    <h4 className="text-xs font-bold text-slate-200 uppercase flex items-center gap-2 tracking-wider">
+                      <Sun className="w-4 h-4 text-amber-400" /> Внесение Опыления Дикой Ванили (Vanilla planifolia)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {vanillaPollinations.map(sec => (
+                        <div key={sec.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
+                          <div className="flex justify-between font-bold"><span>Сектор: {sec.id}</span> <span className="text-emerald-400">{sec.count} лиан</span></div>
+                          <div className="flex justify-between mt-1"><span className="text-slate-400">Опылено цветков:</span> <span className="text-amber-400 font-bold font-mono">{sec.pollinatedToday}</span></div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input 
+                        type="number" 
+                        placeholder="Опылено цветков сегодня (+ шт)"
+                        value={newPollinationCount}
+                        onChange={(e) => setNewPollinationCount(e.target.value)}
+                        className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex-1 font-mono"
+                      />
+                      <button 
+                        onClick={() => {
+                          if (!newPollinationCount) return;
+                          setVanillaPollinations(prev => prev.map((s, i) => i === 0 ? {
+                            ...s,
+                            pollinatedToday: s.pollinatedToday + parseInt(newPollinationCount)
+                          } : s));
+                          setNewPollinationCount('');
+                        }}
+                        className="bg-emerald-500 text-slate-950 px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-400 transition-colors"
+                      >
+                        Записать
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* СПЕЦИАЛЬНЫЕ ИНТЕГРИРОВАННЫЕ БЛОКИ: ИИ-Сортировщик кофе + Логи климата Коста-Рики (БОК-О-БОК) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* 1. ИНТЕГРИРОВАННЫЙ ИИ-АНАЛИЗАТОР ДЕФЕКТОВ КОФЕ */}
+              <section className="bg-slate-900/40 border border-emerald-500/20 rounded-3xl p-6 space-y-6 backdrop-blur-md">
+                <div>
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-400">
+                    <Cpu className="text-emerald-400 w-5 h-5 animate-pulse" /> Калибровщик зерен Coffea Arabica
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1">Определение дефектов, уровня квакеров и спешелти-грейда по фото</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  {/* Интерактивное окно камеры с реальным фото кофе */}
+                  <div className="bg-slate-950 border border-dashed border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 hover:border-emerald-500/50 transition-all cursor-pointer relative overflow-hidden min-h-[300px]">
+                    {costaRicaAiResult || costaRicaAiAnalyzing ? (
+                      <div className="absolute inset-0 w-full h-full animate-fadeIn">
+                        <img 
+                          src="https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80" 
+                          alt="AI Coffee cherries Scan" 
+                          className="w-full h-full object-cover brightness-[0.7] contrast-[1.05]"
+                        />
+                        {/* Изумрудный лазер */}
+                        <div className="absolute left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-bounce" style={{ top: '35%', animationDuration: '3s' }}></div>
+                        
+                        {!costaRicaAiAnalyzing && costaRicaAiResult && (
+                          <div className="absolute inset-4 border-2 border-dashed rounded-xl border-emerald-400/40 flex items-center justify-center">
+                            <div className="bg-slate-950/90 border border-emerald-400/40 p-2.5 rounded-lg text-[10px] text-emerald-300 font-mono text-left absolute top-4 left-4">
+                              <div className="font-bold border-b border-emerald-400/20 pb-0.5 mb-1 flex items-center gap-1">
+                                <Cpu className="w-3 h-3 animate-spin" /> TF.js WASM Coffee
+                              </div>
+                              <div>Калибр: <span className="text-white font-bold">Coffea Arabica</span></div>
+                              <div>Дефекты: <span className="text-emerald-400 font-bold">0.0% Perfect</span></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4 flex flex-col items-center">
+                        <div className="p-4 bg-slate-900 rounded-full border border-slate-800">
+                          <Camera className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-300">Камера ИИ-Оценки Кофе</h4>
+                          <p className="text-xs text-slate-500 mt-1">AI проанализирует зерна на наличие квакеров, черных пятен или сколов</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Кнопки управления */}
+                    <div className="flex gap-2 z-10 mt-auto bg-slate-950/90 p-2 rounded-xl border border-slate-800">
+                      <button 
+                        onClick={runCostaRicaAi}
+                        disabled={costaRicaAiAnalyzing}
+                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold px-4 py-2 rounded-lg shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
+                      >
+                        {costaRicaAiAnalyzing ? 'Анализ...' : 'Сканировать лот кофе'}
+                      </button>
+                      {(costaRicaAiResult || costaRicaAiAnalyzing) && (
+                        <button onClick={() => setCostaRicaAiResult(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700">
+                          Сбросить
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Результат */}
+                  <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 min-h-[150px] flex flex-col justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 font-mono">Вердикт AI Ноды</h4>
+                      {costaRicaAiAnalyzing && (
+                        <div className="space-y-3 py-2">
+                          <div className="flex items-center gap-2 text-xs text-slate-300">
+                            <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                            <span>Анализ сверточной сетью MobileNet-V3...</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div className="bg-emerald-500 h-1.5 rounded-full animate-pulse" style={{ width: '85%' }}></div>
+                          </div>
+                        </div>
+                      )}
+                      {!costaRicaAiAnalyzing && costaRicaAiResult && (
+                        <div className="space-y-3 animate-fadeIn">
+                          <span className="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold font-mono">
+                            {costaRicaAiResult.grade}
+                          </span>
+                          <p className="text-xs text-slate-300 leading-relaxed">{costaRicaAiResult.desc}</p>
+                          <div className="text-[11px] text-slate-400 font-mono">Действие: <span className="text-emerald-400 font-bold">{costaRicaAiResult.action}</span></div>
+                        </div>
+                      )}
+                      {!costaRicaAiAnalyzing && !costaRicaAiResult && (
+                        <div className="text-slate-500 text-xs text-center py-6 font-mono">
+                          Ожидание загрузки макро-снимка кофе. Запустите ИИ-тест.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              </section>
+
+              {/* 2. ЛОКАЛЬНЫЙ ЖУРНАЛ КЛИМАТА И ИРРИГАЦИИ КОСТА-РИКИ */}
+              <section className="bg-slate-900/40 border border-emerald-500/20 rounded-3xl p-6 space-y-6 backdrop-blur-md">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-emerald-400">
+                      <CloudRain className="text-emerald-400 w-5 h-5" /> Панель Микроклимата & IoT-Событий
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Локальное логирование климатических станций и автополива</p>
+                  </div>
+                </div>
+
+                {/* Добавить алерт */}
+                <form onSubmit={handleAddCostaRicaAlert} className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Ввести лог климатической станции..."
+                    value={newCostaRicaAlert}
+                    onChange={(e) => setNewCostaRicaAlert(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex-1 font-mono"
+                  />
+                  <button type="submit" className="bg-emerald-500 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-emerald-400 transition-colors">
+                    Внести событие
+                  </button>
+                </form>
+
+                {/* Список логов (Отфильтрован строго по Коста-Рике!) */}
+                <div className="bg-slate-950 rounded-2xl border border-slate-850 overflow-hidden text-xs">
+                  <div className="grid grid-cols-12 bg-slate-900 px-4 py-2.5 font-bold text-slate-400 border-b border-slate-800">
+                    <div className="col-span-3">Время</div>
+                    <div className="col-span-6">Локация / Датчик</div>
+                    <div className="col-span-3 text-right">Статус</div>
+                  </div>
+                  <div className="divide-y divide-slate-900/80 max-h-[310px] overflow-y-auto">
+                    {securityLog.filter(log => log.location.includes('Коста-Рика') || log.location.includes('Глобальная')).map((log) => (
+                      <div key={log.id} className="grid grid-cols-12 px-4 py-3 text-slate-300 hover:bg-slate-900/40 items-center">
+                        <div className="col-span-3 font-mono text-slate-500">{log.time}</div>
+                        <div className="col-span-6">
+                          <span className="font-bold text-emerald-300 font-mono text-[10px] block">{log.location}</span>
+                          <span className="text-slate-400 text-[11px] block">{log.event}</span>
+                        </div>
+                        <div className="col-span-3 text-right">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold font-mono ${
+                            log.severity === 'high' ? 'bg-rose-500/20 text-rose-400' : 'bg-sky-500/20 text-sky-400'
+                          }`}>
+                            {log.severity.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </section>
+
+            </div>
+
           </div>
-        </section>
+        )}
 
       </main>
 
