@@ -158,8 +158,25 @@ export default function App() {
     setNewAlertMessage('');
   };
 
+  // Функция для динамического фона на основе выбранной вкладки (Фермы)
+  const getDynamicBg = () => {
+    const overlays = "linear-gradient(to bottom, rgba(2, 6, 23, 0.88), rgba(2, 6, 23, 0.98))";
+    let imgUrl = "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80"; // Global High-tech Grid
+    if (activeTab === 'palawan') {
+      imgUrl = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80"; // Palawan Turquoise Lagoon
+    } else if (activeTab === 'costarica') {
+      imgUrl = "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1600&q=80"; // Costa Rica Cloud Forest
+    }
+    return {
+      backgroundImage: `${overlays}, url('${imgUrl}')`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed'
+    };
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-900">
+    <div style={getDynamicBg()} className="min-h-screen text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-900 transition-all duration-700 ease-in-out">
       
       {/* HEADER / ТАКТИЧЕСКИЙ БАР */}
       <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 py-3 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -236,6 +253,20 @@ export default function App() {
           {(activeTab === 'global' || activeTab === 'palawan') && (
             <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-slate-800 p-6 shadow-xl backdrop-blur-md">
               <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/5 blur-3xl rounded-full"></div>
+              
+              {/* Фото-баннер Палаван */}
+              <div className="h-40 rounded-2xl mb-6 overflow-hidden relative border border-teal-500/20 group">
+                <img 
+                  src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=800&q=80" 
+                  alt="Palawan Lagoon" 
+                  className="w-full h-full object-cover brightness-[0.75] group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
+                <span className="absolute bottom-3 left-3 bg-teal-950/80 text-teal-300 border border-teal-500/30 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wider uppercase">
+                  📍 Остров Палаван • База Pearl Farming
+                </span>
+              </div>
+
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-widest text-teal-400">Ферма 1 • Филиппины</span>
@@ -310,6 +341,20 @@ export default function App() {
           {(activeTab === 'global' || activeTab === 'costarica') && (
             <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-slate-800 p-6 shadow-xl backdrop-blur-md">
               <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl rounded-full"></div>
+              
+              {/* Фото-баннер Коста-Рика */}
+              <div className="h-40 rounded-2xl mb-6 overflow-hidden relative border border-emerald-500/20 group">
+                <img 
+                  src="https://images.unsplash.com/photo-1511556532299-8f662fc26c06?auto=format&fit=crop&w=800&q=80" 
+                  alt="Costa Rica Farms" 
+                  className="w-full h-full object-cover brightness-[0.75] group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent"></div>
+                <span className="absolute bottom-3 left-3 bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-xl text-[10px] font-bold tracking-wider uppercase">
+                  📍 Монтеверде • Высокогорный кофе и дикая ваниль
+                </span>
+              </div>
+
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-widest text-emerald-400">Ферма 2 • Центральная Америка</span>
@@ -727,26 +772,68 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Окно загрузки/камеры */}
-            <div className="bg-slate-950 border border-dashed border-slate-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 hover:border-teal-500/50 transition-all cursor-pointer">
-              <div className="p-4 bg-slate-900 rounded-full border border-slate-800">
-                <Camera className="w-8 h-8 text-slate-400" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-300">Загрузите снимок или включите камеру</h4>
-                <p className="text-xs text-slate-500 mt-1">AI автоматически классифицирует жемчуг по классам или выявит дефекты ягод кофе</p>
-              </div>
-              <div className="flex gap-2">
-                <button className="bg-slate-900 hover:bg-slate-800 text-xs font-bold text-slate-300 px-4 py-2 rounded-xl border border-slate-800 transition-colors">
-                  Выбрать файл
+            {/* Окно загрузки/камеры (Интерактивное с реальными фото!) */}
+            <div className="bg-slate-950 border border-dashed border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center text-center space-y-4 hover:border-teal-500/50 transition-all cursor-pointer relative overflow-hidden min-h-[300px]">
+              {aiResult || aiAnalyzing ? (
+                // Если запущен тест, показываем сканируемую фотографию с оверлеем!
+                <div className="absolute inset-0 w-full h-full animate-fadeIn">
+                  <img 
+                    src={aiSortingType === 'pearl' 
+                      ? "https://images.unsplash.com/photo-1515688594390-b649af70d282?auto=format&fit=crop&w=600&q=80" 
+                      : "https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=600&q=80"
+                    } 
+                    alt="AI Скан" 
+                    className="w-full h-full object-cover brightness-[0.7] contrast-[1.05]"
+                  />
+                  {/* Сканирующий лазерный луч */}
+                  <div className="absolute left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-bounce" style={{ top: '35%', animationDuration: '3s' }}></div>
+                  
+                  {/* Нейро-рамка поверх */}
+                  {!aiAnalyzing && aiResult && (
+                    <div className="absolute inset-4 border-2 border-dashed rounded-xl border-amber-400/40 flex items-center justify-center">
+                      <div className="bg-slate-950/90 border border-amber-400/40 p-2.5 rounded-lg text-[10px] text-amber-300 font-mono text-left max-w-[200px] shadow-2xl absolute top-4 left-4">
+                        <div className="font-bold border-b border-amber-400/20 pb-0.5 mb-1 flex items-center gap-1">
+                          <Cpu className="w-3 h-3 animate-spin" style={{ animationDuration: '4s' }} /> TensorFlow.js
+                        </div>
+                        <div>Распознано: <span className="text-white font-bold">{aiSortingType === 'pearl' ? 'Pinctada Pearl' : 'Coffea Arabica'}</span></div>
+                        <div>Уверенность: <span className="text-emerald-400 font-bold">98.7%</span></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Стандартное состояние заглушки
+                <div className="space-y-4 flex flex-col items-center">
+                  <div className="p-4 bg-slate-900 rounded-full border border-slate-800">
+                    <Camera className="w-8 h-8 text-slate-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-300">Камера ИИ-Экспертизы</h4>
+                    <p className="text-xs text-slate-500 mt-1">AI проанализирует жемчуг по калибру или выявит квакеры и дефекты ягод кофе</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Кнопки управления (всегда поверх фото) */}
+              <div className="flex gap-2 z-10 mt-auto bg-slate-950/90 p-2 rounded-xl border border-slate-800/80">
+                <button className="bg-slate-900 hover:bg-slate-800 text-xs font-bold text-slate-300 px-3 py-1.5 rounded-lg border border-slate-800 transition-colors">
+                  Выбрать снимок
                 </button>
                 <button 
                   onClick={handleAiAnalysis}
                   disabled={aiAnalyzing}
-                  className="bg-gradient-to-tr from-amber-500 to-yellow-400 hover:brightness-110 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
+                  className="bg-gradient-to-tr from-amber-500 to-yellow-400 hover:brightness-110 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
                 >
-                  {aiAnalyzing ? 'Нейросеть думает...' : 'Запустить ИИ-тест'}
+                  {aiAnalyzing ? 'Сканирование...' : 'Запустить ИИ-тест'}
                 </button>
+                {(aiResult || aiAnalyzing) && (
+                  <button 
+                    onClick={() => setAiResult(null)}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700"
+                  >
+                    Сброс
+                  </button>
+                )}
               </div>
             </div>
 
