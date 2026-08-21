@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   // Замените 'eco-synapse-dashboard' на имя вашего репозитория на GitHub Pages
-  base: '/eco-synapse-dashboard/',
+  base: '/my-eco-dashboard/',
   plugins: [
     react(),
     VitePWA({
