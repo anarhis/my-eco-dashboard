@@ -5,7 +5,7 @@ import {
   Radio, RefreshCw, Rss, Shield, ShieldAlert, Sun, Thermometer, Trash2, 
   Wind, Zap, CheckSquare, Plus, AlertTriangle, Cpu, Camera, Filter, HardHat,
   Volume2, Wifi, Power, RefreshCw as Loop, Check, Download, AlertOctagon, EyeOff,
-  ChevronRight, VolumeX, Flame, Bell
+  ChevronRight, VolumeX, Flame, Bell, Edit, X
 } from 'lucide-react';
 
 // === НАЧАЛЬНЫЕ ЛОКАЛЬНЫЕ ДАННЫЕ ===
@@ -151,6 +151,12 @@ export default function App() {
   // Охрана периметра Коста-Рика
   const [wildlifeAlert, setWildlifeAlert] = useState(false);
   const [wildlifeTarget, setWildlifeTarget] = useState('');
+
+  // Состояния для работы Административной Панели
+  const [adminSelectedTable, setAdminSelectedTable] = useState('longlines'); // 'longlines' | 'coffee' | 'vanilla' | 'hives' | 'logs'
+  const [adminEditingItem, setAdminEditingItem] = useState(null); 
+  const [adminForm, setAdminForm] = useState({}); 
+  const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
 
   // ==========================================
   // === ЭФФЕКТЫ И ЧАСЫ РЕАЛЬНОГО ВРЕМЕНИ ===
@@ -494,6 +500,140 @@ export default function App() {
     triggerPush('✅ ПЕРИМЕТР ЧИСТ', 'Камеры ночного видения переведены в штатный режим ожидания.', 'info');
   };
 
+  // === ФУНКЦИОНАЛ АДМИН-ПАНЕЛИ (СУБ-БД) ===
+  const handleAdminEditClick = (item) => {
+    setAdminEditingItem(item);
+    setAdminForm({ ...item });
+    setIsAdminFormOpen(true);
+  };
+
+  const handleAdminAddClick = () => {
+    setAdminEditingItem(null);
+    if (adminSelectedTable === 'longlines') {
+      setAdminForm({ id: `Л-${longlines.length + 1}`, count: 12, pearls: 480, status: 'Норма', lastCleaned: '3 недели назад', fill: 80 });
+    } else if (adminSelectedTable === 'coffee') {
+      setAdminForm({ id: `CR-BATCH-${coffeeBatches.length + 1}`, variety: 'Catuai', stage: 'Ферментация', hoursLeft: 24, brix: '21%', moisture: '12.5%', temp: '22.0°C', sealed: false });
+    } else if (adminSelectedTable === 'vanilla') {
+      setAdminForm({ id: `Сектор ${String.fromCharCode(65 + vanillaSectors.length)}`, count: 100, pollinatedToday: 0, status: 'Рост стручков' });
+    } else if (adminSelectedTable === 'hives') {
+      setAdminForm({ id: `У-${hives.length + 12}`, variety: 'Italian Buckfast', frequency: 180, health: 90, alert: false, note: 'Стабильный гул.' });
+    } else if (adminSelectedTable === 'logs') {
+      setAdminForm({ id: Date.now(), time: new Date().toLocaleTimeString('ru-RU'), location: 'Ручной ввод', event: 'Кастомное событие БД', severity: 'info', farm: 'palawan' });
+    }
+    setIsAdminFormOpen(true);
+  };
+
+  const handleAdminSave = (e) => {
+    e.preventDefault();
+    const table = adminSelectedTable;
+    const isEdit = adminEditingItem !== null;
+
+    if (table === 'longlines') {
+      if (isEdit) {
+        setLonglines(prev => prev.map(item => item.id === adminEditingItem.id ? { ...adminForm, count: parseInt(adminForm.count) || 0, pearls: parseInt(adminForm.pearls) || 0, fill: parseInt(adminForm.fill) || 0 } : item));
+        triggerPush('БД ОБНОВЛЕНА', `Длинная линия ${adminForm.id} успешно изменена в локальной БД.`, 'success');
+      } else {
+        if (longlines.some(l => l.id === adminForm.id)) {
+          alert('ID Линии уже существует!');
+          return;
+        }
+        setLonglines(prev => [...prev, { ...adminForm, count: parseInt(adminForm.count) || 0, pearls: parseInt(adminForm.pearls) || 0, fill: parseInt(adminForm.fill) || 0 }]);
+        triggerPush('БД ОБНОВЛЕНА', `Создана новая линия ${adminForm.id} в локальной БД.`, 'success');
+      }
+    } else if (table === 'coffee') {
+      if (isEdit) {
+        setCoffeeBatches(prev => prev.map(item => item.id === adminEditingItem.id ? { ...adminForm } : item));
+        triggerPush('БД ОБНОВЛЕНА', `Лот кофе ${adminForm.id} успешно обновлен.`, 'success');
+      } else {
+        if (coffeeBatches.some(c => c.id === adminForm.id)) {
+          alert('ID Лота уже существует!');
+          return;
+        }
+        setCoffeeBatches(prev => [...prev, { ...adminForm }]);
+        triggerPush('БД ОБНОВЛЕНА', `Создан новый лот кофе ${adminForm.id}.`, 'success');
+      }
+    } else if (table === 'vanilla') {
+      if (isEdit) {
+        setVanillaSectors(prev => prev.map(item => item.id === adminEditingItem.id ? { ...adminForm, count: parseInt(adminForm.count) || 0, pollinatedToday: parseInt(adminForm.pollinatedToday) || 0 } : item));
+        triggerPush('БД ОБНОВЛЕНА', `Сектор ванили ${adminForm.id} успешно изменен.`, 'success');
+      } else {
+        if (vanillaSectors.some(v => v.id === adminForm.id)) {
+          alert('Сектор с таким ID уже существует!');
+          return;
+        }
+        setVanillaSectors(prev => [...prev, { ...adminForm, count: parseInt(adminForm.count) || 0, pollinatedToday: parseInt(adminForm.pollinatedToday) || 0 }]);
+        triggerPush('БД ОБНОВЛЕНА', `Добавлен новый сектор ванили ${adminForm.id}.`, 'success');
+      }
+    } else if (table === 'hives') {
+      if (isEdit) {
+        setHives(prev => prev.map(item => item.id === adminEditingItem.id ? { ...adminForm, frequency: parseInt(adminForm.frequency) || 0, health: parseInt(adminForm.health) || 0 } : item));
+        triggerPush('БД ОБНОВЛЕНА', `Улей ${adminForm.id} успешно отредактирован.`, 'success');
+      } else {
+        if (hives.some(h => h.id === adminForm.id)) {
+          alert('Улей с таким ID уже существует!');
+          return;
+        }
+        setHives(prev => [...prev, { ...adminForm, frequency: parseInt(adminForm.frequency) || 0, health: parseInt(adminForm.health) || 0 }]);
+        triggerPush('БД ОБНОВЛЕНА', `Новый улей ${adminForm.id} добавлен на пасеку.`, 'success');
+      }
+    } else if (table === 'logs') {
+      if (isEdit) {
+        setSecurityLog(prev => prev.map(item => item.id === adminEditingItem.id ? { ...adminForm } : item));
+      } else {
+        setSecurityLog(prev => [{ ...adminForm, id: Date.now() }, ...prev]);
+      }
+      triggerPush('БД ОБНОВЛЕНА', 'Журнал событий успешно обновлен.', 'success');
+    }
+
+    setIsAdminFormOpen(false);
+    setAdminEditingItem(null);
+  };
+
+  const handleAdminDelete = (id) => {
+    const table = adminSelectedTable;
+    if (table === 'longlines') {
+      setLonglines(prev => prev.filter(item => item.id !== id));
+      triggerPush('БД ОБНОВЛЕНА', `Линия ${id} удалена из базы данных.`, 'warning');
+    } else if (table === 'coffee') {
+      setCoffeeBatches(prev => prev.filter(item => item.id !== id));
+      triggerPush('БД ОБНОВЛЕНА', `Лот кофе ${id} удален из базы данных.`, 'warning');
+    } else if (table === 'vanilla') {
+      setVanillaSectors(prev => prev.filter(item => item.id !== id));
+      triggerPush('БД ОБНОВЛЕНА', `Сектор ванили ${id} удален.`, 'warning');
+    } else if (table === 'hives') {
+      setHives(prev => prev.filter(item => item.id !== id));
+      triggerPush('БД ОБНОВЛЕНА', `Улей ${id} удален с пасеки.`, 'warning');
+    } else if (table === 'logs') {
+      setSecurityLog(prev => prev.filter(item => item.id !== id));
+      triggerPush('БД ОБНОВЛЕНА', `Запись лога удалена.`, 'warning');
+    }
+  };
+
+  const handleResetToDefaults = () => {
+    if (window.confirm('Вы действительно хотите сбросить всю базу данных к исходным значениям?')) {
+      setLonglines([
+        { id: 'Л-1', count: 12, pearls: 480, status: 'Норма', lastCleaned: '3 недели назад' },
+        { id: 'Л-2', count: 15, pearls: 600, status: 'Норма', lastCleaned: '2 недели назад' },
+        { id: 'Л-3', count: 10, pearls: 400, status: '⚠️ Требуется чистка', lastCleaned: '4+ недели назад' },
+        { id: 'Л-4', count: 8, pearls: 320, status: 'Норма', lastCleaned: '1 неделя назад' }
+      ]);
+      setCoffeeBatches([
+        { id: 'CR-GEO-09', variety: 'Geisha (Анаэробная)', stage: 'Ферментация', hoursLeft: 14, brix: '23%', moisture: '42%', temp: '21.5°C', sealed: true },
+        { id: 'CR-SL28-02', variety: 'SL-28 (Спешелти)', stage: 'Сушка на африканских кроватях', daysLeft: 3, brix: '21%', moisture: '14.8%', temp: '24.2°C', sealed: false }
+      ]);
+      setVanillaSectors([
+        { id: 'Сектор А', count: 120, pollinatedToday: 32, status: '85% созревание' },
+        { id: 'Сектор B', count: 95, pollinatedToday: 18, status: '40% созревание' }
+      ]);
+      setHives([
+        { id: 'У-12', variety: 'Golden Italian', frequency: 245, health: 68, alert: true, note: 'Критический гул! Риск роения.' },
+        { id: 'У-15', variety: 'Carnica Mix', frequency: 165, health: 96, alert: false, note: 'Стабильный гул медосбора.' }
+      ]);
+      setSecurityLog(INITIAL_SECURITY_LOG);
+      triggerPush('БД СБРОШЕНА', 'Все локальные таблицы успешно перезаписаны дефолтными значениями.', 'info');
+    }
+  };
+
 
   // ==========================================
   // === ОПРЕДЕЛЕНИЕ ТЕМ И ЦВЕТОВ НА ЛЕТУ ===
@@ -501,10 +641,11 @@ export default function App() {
   const isPalawan = activeTab === 'palawan';
   const isCostaRica = activeTab === 'costarica';
   const isGlobal = activeTab === 'global';
+  const isAdmin = activeTab === 'admin';
 
-  const brandColorClass = isPalawan ? 'text-cyan-400' : isCostaRica ? 'text-emerald-400' : 'text-teal-400';
-  const brandBorderClass = isPalawan ? 'border-cyan-500/30' : isCostaRica ? 'border-emerald-500/30' : 'border-teal-500/30';
-  const brandBgButtonClass = isPalawan ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950' : isCostaRica ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' : 'bg-teal-500 hover:bg-teal-400 text-slate-950';
+  const brandColorClass = isPalawan ? 'text-cyan-400' : isCostaRica ? 'text-emerald-400' : isAdmin ? 'text-violet-400' : 'text-teal-400';
+  const brandBorderClass = isPalawan ? 'border-cyan-500/30' : isCostaRica ? 'border-emerald-500/30' : isAdmin ? 'border-violet-500/30' : 'border-teal-500/30';
+  const brandBgButtonClass = isPalawan ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950' : isCostaRica ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' : isAdmin ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)]' : 'bg-teal-500 hover:bg-teal-400 text-slate-950';
 
   const getDynamicBg = () => {
     const overlays = "linear-gradient(to bottom, rgba(2, 6, 23, 0.90), rgba(2, 6, 23, 0.98))";
@@ -513,6 +654,8 @@ export default function App() {
       imgUrl = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1600&q=80"; // Бирюзовая глубокая лагуна Филиппин
     } else if (isCostaRica) {
       imgUrl = "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1600&q=80"; // Джунгли в облаках Монтеверде
+    } else if (isAdmin) {
+      imgUrl = "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1600&q=80"; // Фиолетовый серверный зал для админа
     }
     return {
       backgroundImage: `${overlays}, url('${imgUrl}')`,
@@ -589,6 +732,13 @@ export default function App() {
           >
             <Feather className="w-3.5 h-3.5" />
             Ферма 2: Коста-Рика (Агро)
+          </button>
+          <button 
+            onClick={() => setActiveTab('admin')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all duration-300 ${isAdmin ? 'bg-violet-600 text-white shadow-[0_0_12px_rgba(139,92,246,0.4)] font-bold' : 'text-slate-400 hover:text-violet-400'}`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            Управление БД (Админ)
           </button>
         </div>
 
@@ -1890,6 +2040,574 @@ export default function App() {
 
             </div>
 
+          </div>
+        )}
+
+        {/* ======================================================= */}
+        {/* === ЭКРАН 4: ПАНЕЛЬ АДМИНИСТРАТОРА (ФИОЛЕТОВАЯ ТЕМА) === */}
+        {/* ======================================================= */}
+        {isAdmin && (
+          <div className="space-y-8 animate-fadeIn text-violet-100">
+            <div className="relative overflow-hidden rounded-3xl bg-slate-900/40 border border-violet-500/20 p-6 shadow-xl backdrop-blur-md">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-violet-500/10 blur-3xl rounded-full"></div>
+              
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
+                <div>
+                  <span className="text-xs font-black uppercase tracking-widest text-violet-400 font-mono">🔑 СУПЕРПОЛЬЗОВАТЕЛЬ • ЦЕНТРАЛЬНАЯ СУБ-БД</span>
+                  <h2 className="text-3xl font-black text-slate-100 mt-1">Панель Администратора (Админ-Панель)</h2>
+                  <p className="text-sm text-slate-400 mt-1">Редактирование, добавление, удаление контейнеров, длинных линий, ульев и лотов ферментации кофе в реальном времени.</p>
+                </div>
+                
+                {/* КНОПКА СБРОСА БД */}
+                <button 
+                  onClick={handleResetToDefaults}
+                  className="bg-rose-950/40 hover:bg-rose-900/40 border border-rose-500/30 text-rose-300 font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-all w-full lg:w-auto justify-center"
+                >
+                  <Trash2 className="w-4 h-4" /> Сбросить БД к дефолтным
+                </button>
+              </div>
+
+              {/* СЕЛЕКТОР ТАБЛИЦ БД */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 bg-slate-950/80 p-2 rounded-2xl border border-slate-850 mb-6">
+                <button 
+                  onClick={() => { setAdminSelectedTable('longlines'); setIsAdminFormOpen(false); }}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${adminSelectedTable === 'longlines' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  <Anchor className="w-3.5 h-3.5" /> 🐚 Филиппины (Линии)
+                </button>
+                <button 
+                  onClick={() => { setAdminSelectedTable('coffee'); setIsAdminFormOpen(false); }}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${adminSelectedTable === 'coffee' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  <Layers className="w-3.5 h-3.5" /> ☕ Коста-Рика (Кофе)
+                </button>
+                <button 
+                  onClick={() => { setAdminSelectedTable('vanilla'); setIsAdminFormOpen(false); }}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${adminSelectedTable === 'vanilla' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  <Sun className="w-3.5 h-3.5" /> 🌸 Коста-Рика (Ваниль)
+                </button>
+                <button 
+                  onClick={() => { setAdminSelectedTable('hives'); setIsAdminFormOpen(false); }}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${adminSelectedTable === 'hives' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  <span>🐝 Коста-Рика (Ульи)</span>
+                </button>
+                <button 
+                  onClick={() => { setAdminSelectedTable('logs'); setIsAdminFormOpen(false); }}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${adminSelectedTable === 'logs' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  <Database className="w-3.5 h-3.5" /> 📜 Логи & Датчики
+                </button>
+              </div>
+
+              {/* ОКНО ИНЛАЙН РЕДАКТОРА (ФОРМА ДОБАВЛЕНИЯ / РЕДАКТИРОВАНИЯ) */}
+              {isAdminFormOpen && (
+                <form onSubmit={handleAdminSave} className="bg-slate-950 p-6 rounded-2xl border border-violet-500/30 mb-8 space-y-4 animate-fadeIn">
+                  <div className="flex justify-between items-center border-b border-slate-850 pb-3">
+                    <h3 className="font-bold text-sm text-violet-400 flex items-center gap-2">
+                      <Plus className="w-4 h-4 animate-spin" style={{ animationDuration: '6s' }} /> 
+                      {adminEditingItem ? `Редактировать объект: ${adminEditingItem.id}` : `Добавить новую запись в таблицу`}
+                    </h3>
+                    <button type="button" onClick={() => setIsAdminFormOpen(false)} className="text-slate-500 hover:text-slate-200 text-xs">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    
+                    {/* ПОЛЯ ДЛЯ ТАБЛИЦЫ: LONGLINES */}
+                    {adminSelectedTable === 'longlines' && (
+                      <>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">ID Линии</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.id || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, id: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            disabled={adminEditingItem !== null}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Канатов (кол-во шт)</label>
+                          <input 
+                            type="number" 
+                            value={adminForm.count || 0} 
+                            onChange={e => setAdminForm({ ...adminForm, count: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Жемчужниц (шт)</label>
+                          <input 
+                            type="number" 
+                            value={adminForm.pearls || 0} 
+                            onChange={e => setAdminForm({ ...adminForm, pearls: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Последняя чистка</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.lastCleaned || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, lastCleaned: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Статус чистки</label>
+                          <select 
+                            value={adminForm.status || 'Норма'} 
+                            onChange={e => setAdminForm({ ...adminForm, status: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                          >
+                            <option value="Норма">Норма</option>
+                            <option value="⚠️ Требуется чистка">⚠️ Требуется чистка</option>
+                            <option value="Критично">Критично</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+
+                    {/* ПОЛЯ ДЛЯ ТАБЛИЦЫ: COFFEE */}
+                    {adminSelectedTable === 'coffee' && (
+                      <>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">ID Лота</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.id || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, id: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            disabled={adminEditingItem !== null}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Сорт кофе / Какао</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.variety || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, variety: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Стадия процесса</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.stage || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, stage: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Сахар BRIX</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.brix || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, brix: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Влажность зерна (%)</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.moisture || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, moisture: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Температура</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.temp || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, temp: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div className="flex items-center h-full pt-4">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-200">
+                            <input 
+                              type="checkbox" 
+                              checked={adminForm.sealed || false} 
+                              onChange={e => setAdminForm({ ...adminForm, sealed: e.target.checked })}
+                              className="rounded text-violet-600 focus:ring-violet-500 bg-slate-900 border-slate-800 h-4 w-4"
+                            />
+                            Герметичная анаэробная
+                          </label>
+                        </div>
+                      </>
+                    )}
+
+                    {/* ПОЛЯ ДЛЯ ТАБЛИЦЫ: VANILLA */}
+                    {adminSelectedTable === 'vanilla' && (
+                      <>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Сектор ванили</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.id || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, id: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            disabled={adminEditingItem !== null}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Кол-во Лиан (шт)</label>
+                          <input 
+                            type="number" 
+                            value={adminForm.count || 0} 
+                            onChange={e => setAdminForm({ ...adminForm, count: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Опылено сегодня</label>
+                          <input 
+                            type="number" 
+                            value={adminForm.pollinatedToday || 0} 
+                            onChange={e => setAdminForm({ ...adminForm, pollinatedToday: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div className="md:col-span-3">
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Стадия созревания стручков</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.status || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, status: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* ПОЛЯ ДЛЯ ТАБЛИЦЫ: HIVES */}
+                    {adminSelectedTable === 'hives' && (
+                      <>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">ID Улья</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.id || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, id: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            disabled={adminEditingItem !== null}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Порода пчел</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.variety || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, variety: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Частота гула (Гц)</label>
+                          <input 
+                            type="number" 
+                            value={adminForm.frequency || 0} 
+                            onChange={e => setAdminForm({ ...adminForm, frequency: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Здоровье семьи (%)</label>
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            value={adminForm.health || 0} 
+                            onChange={e => setAdminForm({ ...adminForm, health: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div className="flex items-center h-full pt-4">
+                          <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-200">
+                            <input 
+                              type="checkbox" 
+                              checked={adminForm.alert || false} 
+                              onChange={e => setAdminForm({ ...adminForm, alert: e.target.checked })}
+                              className="rounded text-violet-600 focus:ring-violet-500 bg-slate-900 border-slate-800 h-4 w-4"
+                            />
+                            Триггер тревоги (стресс пчёл)
+                          </label>
+                        </div>
+                        <div className="md:col-span-3">
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Текстовая заметка улья</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.note || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, note: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* ПОЛЯ ДЛЯ ТАБЛИЦЫ: SECURITY LOGS */}
+                    {adminSelectedTable === 'logs' && (
+                      <>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Локация / Датчик</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.location || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, location: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Зафиксированное событие</label>
+                          <input 
+                            type="text" 
+                            value={adminForm.event || ''} 
+                            onChange={e => setAdminForm({ ...adminForm, event: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Класс угрозы</label>
+                          <select 
+                            value={adminForm.severity || 'info'} 
+                            onChange={e => setAdminForm({ ...adminForm, severity: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                          >
+                            <option value="info">info (Информационное)</option>
+                            <option value="warning">warning (Внимание)</option>
+                            <option value="high">high (Критическая угроза)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Принадлежность к ферме</label>
+                          <select 
+                            value={adminForm.farm || 'palawan'} 
+                            onChange={e => setAdminForm({ ...adminForm, farm: e.target.value })}
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
+                          >
+                            <option value="palawan">Палаван (Филиппины)</option>
+                            <option value="costarica">Коста-Рика (Центральная Америка)</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+
+                  </div>
+
+                  <div className="flex gap-2 justify-end pt-3">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsAdminFormOpen(false)}
+                      className="bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 font-bold text-xs px-4 py-2 rounded-xl transition-all"
+                    >
+                      Отменить
+                    </button>
+                    <button 
+                      type="submit"
+                      className="bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs px-5 py-2 rounded-xl transition-all shadow-md shadow-violet-500/20"
+                    >
+                      <Check className="w-4 h-4 inline-block mr-1.5" /> Сохранить в Базу Данных
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* КНОПКА ДОБАВИТЬ НОВУЮ ЗАПИСЬ (Отображается, если форма закрыта) */}
+              {!isAdminFormOpen && (
+                <button 
+                  onClick={handleAdminAddClick}
+                  className="mb-6 bg-violet-600 hover:bg-violet-500 text-white font-black text-xs px-5 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-violet-500/20"
+                >
+                  <Plus className="w-4 h-4" /> Добавить новую строку / контейнер
+                </button>
+              )}
+
+              {/* ОТОБРАЖЕНИЕ ТАБЛИЦЫ ДАННЫХ */}
+              <div className="bg-slate-950 rounded-2xl border border-slate-850 overflow-hidden shadow-2xl">
+                
+                {/* Рендеринг LONGLINES */}
+                {adminSelectedTable === 'longlines' && (
+                  <div>
+                    <div className="grid grid-cols-12 bg-slate-900 px-4 py-3 text-xs font-bold text-slate-400 border-b border-slate-800 font-mono">
+                      <div className="col-span-2">ID Линии</div>
+                      <div className="col-span-2">Канаты (шт)</div>
+                      <div className="col-span-2">Жемчужницы (шт)</div>
+                      <div className="col-span-2">Последняя чистка</div>
+                      <div className="col-span-2">Статус</div>
+                      <div className="col-span-2 text-right">Действия</div>
+                    </div>
+                    <div className="divide-y divide-slate-900/80">
+                      {longlines.map(line => (
+                        <div key={line.id} className="grid grid-cols-12 px-4 py-3.5 text-xs text-slate-300 hover:bg-violet-950/10 items-center transition-colors font-mono">
+                          <div className="col-span-2 font-bold text-violet-400">{line.id}</div>
+                          <div className="col-span-2">{line.count} шт</div>
+                          <div className="col-span-2">{line.pearls} шт</div>
+                          <div className="col-span-2 text-slate-400">{line.lastCleaned}</div>
+                          <div className="col-span-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${line.status.includes('Требуется') ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                              {line.status}
+                            </span>
+                          </div>
+                          <div className="col-span-2 flex justify-end gap-1">
+                            <button type="button" onClick={() => handleAdminEditClick(line)} className="bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg border border-slate-800 text-violet-300 hover:text-white transition-all"><Edit className="w-3.5 h-3.5" /></button>
+                            <button type="button" onClick={() => handleAdminDelete(line.id)} className="bg-slate-900 hover:bg-rose-950/40 p-1.5 rounded-lg border border-slate-800 text-rose-400 hover:text-rose-200 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Рендеринг COFFEE */}
+                {adminSelectedTable === 'coffee' && (
+                  <div>
+                    <div className="grid grid-cols-12 bg-slate-900 px-4 py-3 text-xs font-bold text-slate-400 border-b border-slate-800 font-mono">
+                      <div className="col-span-2">ID Лота</div>
+                      <div className="col-span-2">Сорт</div>
+                      <div className="col-span-3">Стадия</div>
+                      <div className="col-span-1">BRIX</div>
+                      <div className="col-span-1">Влажн.</div>
+                      <div className="col-span-1">Темп</div>
+                      <div className="col-span-2 text-right">Действия</div>
+                    </div>
+                    <div className="divide-y divide-slate-900/80 font-mono">
+                      {coffeeBatches.map(batch => (
+                        <div key={batch.id} className="grid grid-cols-12 px-4 py-3.5 text-xs text-slate-300 hover:bg-violet-950/10 items-center transition-colors">
+                          <div className="col-span-2 font-bold text-violet-400">{batch.id}</div>
+                          <div className="col-span-2 text-slate-200">{batch.variety}</div>
+                          <div className="col-span-3 text-emerald-400 flex items-center gap-1">
+                            <span className={`h-1.5 w-1.5 rounded-full ${batch.sealed ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`}></span>
+                            {batch.stage}
+                          </div>
+                          <div className="col-span-1 text-amber-300">{batch.brix}</div>
+                          <div className="col-span-1 text-emerald-300">{batch.moisture}</div>
+                          <div className="col-span-1 text-slate-400">{batch.temp}</div>
+                          <div className="col-span-2 flex justify-end gap-1">
+                            <button type="button" onClick={() => handleAdminEditClick(batch)} className="bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg border border-slate-800 text-violet-300 hover:text-white transition-all"><Edit className="w-3.5 h-3.5" /></button>
+                            <button type="button" onClick={() => handleAdminDelete(batch.id)} className="bg-slate-900 hover:bg-rose-950/40 p-1.5 rounded-lg border border-slate-800 text-rose-400 hover:text-rose-200 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Рендеринг VANILLA */}
+                {adminSelectedTable === 'vanilla' && (
+                  <div>
+                    <div className="grid grid-cols-12 bg-slate-900 px-4 py-3 text-xs font-bold text-slate-400 border-b border-slate-800 font-mono">
+                      <div className="col-span-3">Сектор</div>
+                      <div className="col-span-3">Лианы (шт)</div>
+                      <div className="col-span-2">Опылено сегодня</div>
+                      <div className="col-span-2">Статус</div>
+                      <div className="col-span-2 text-right">Действия</div>
+                    </div>
+                    <div className="divide-y divide-slate-900/80 font-mono">
+                      {vanillaSectors.map(sec => (
+                        <div key={sec.id} className="grid grid-cols-12 px-4 py-3.5 text-xs text-slate-300 hover:bg-violet-950/10 items-center transition-colors">
+                          <div className="col-span-3 font-bold text-violet-400">{sec.id}</div>
+                          <div className="col-span-3">{sec.count} лиан</div>
+                          <div className="col-span-2 text-amber-300 font-bold">{sec.pollinatedToday}</div>
+                          <div className="col-span-2 text-emerald-400">{sec.status}</div>
+                          <div className="col-span-2 flex justify-end gap-1">
+                            <button type="button" onClick={() => handleAdminEditClick(sec)} className="bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg border border-slate-800 text-violet-300 hover:text-white transition-all"><Edit className="w-3.5 h-3.5" /></button>
+                            <button type="button" onClick={() => handleAdminDelete(sec.id)} className="bg-slate-900 hover:bg-rose-950/40 p-1.5 rounded-lg border border-slate-800 text-rose-400 hover:text-rose-200 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Рендеринг HIVES */}
+                {adminSelectedTable === 'hives' && (
+                  <div>
+                    <div className="grid grid-cols-12 bg-slate-900 px-4 py-3 text-xs font-bold text-slate-400 border-b border-slate-800 font-mono">
+                      <div className="col-span-2">ID Улья</div>
+                      <div className="col-span-2">Порода пчел</div>
+                      <div className="col-span-1">Гул (Гц)</div>
+                      <div className="col-span-1">Здоровье</div>
+                      <div className="col-span-4">Заметка</div>
+                      <div className="col-span-2 text-right">Действия</div>
+                    </div>
+                    <div className="divide-y divide-slate-900/80 font-mono">
+                      {hives.map(hive => (
+                        <div key={hive.id} className="grid grid-cols-12 px-4 py-3.5 text-xs text-slate-300 hover:bg-violet-950/10 items-center transition-colors">
+                          <div className="col-span-2 font-bold text-violet-400">{hive.id}</div>
+                          <div className="col-span-2 text-slate-200">{hive.variety}</div>
+                          <div className="col-span-1 text-amber-300 font-bold">{hive.frequency} Гц</div>
+                          <div className="col-span-1 text-emerald-400">{hive.health}%</div>
+                          <div className="col-span-4 text-slate-400 text-[10px] leading-tight truncate">{hive.note}</div>
+                          <div className="col-span-2 flex justify-end gap-1">
+                            <button type="button" onClick={() => handleAdminEditClick(hive)} className="bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg border border-slate-800 text-violet-300 hover:text-white transition-all"><Edit className="w-3.5 h-3.5" /></button>
+                            <button type="button" onClick={() => handleAdminDelete(hive.id)} className="bg-slate-900 hover:bg-rose-950/40 p-1.5 rounded-lg border border-slate-800 text-rose-400 hover:text-rose-200 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Рендеринг LOGS */}
+                {adminSelectedTable === 'logs' && (
+                  <div>
+                    <div className="grid grid-cols-12 bg-slate-900 px-4 py-3 text-xs font-bold text-slate-400 border-b border-slate-800 font-mono">
+                      <div className="col-span-2">Время</div>
+                      <div className="col-span-3">Локация</div>
+                      <div className="col-span-4">Событие</div>
+                      <div className="col-span-1">Класс</div>
+                      <div className="col-span-2 text-right">Действия</div>
+                    </div>
+                    <div className="divide-y divide-slate-900/80 font-mono">
+                      {securityLog.map(log => (
+                        <div key={log.id} className="grid grid-cols-12 px-4 py-3.5 text-xs text-slate-300 hover:bg-violet-950/10 items-center transition-colors">
+                          <div className="col-span-2 text-slate-500">{log.time}</div>
+                          <div className="col-span-3 text-slate-200">{log.location}</div>
+                          <div className="col-span-4 text-slate-400 text-[11px] truncate">{log.event}</div>
+                          <div className="col-span-1">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.severity === 'high' ? 'bg-rose-500/10 text-rose-400' : log.severity === 'warning' ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-800 text-slate-400'}`}>
+                              {log.severity}
+                            </span>
+                          </div>
+                          <div className="col-span-2 flex justify-end gap-1">
+                            <button type="button" onClick={() => handleAdminEditClick(log)} className="bg-slate-900 hover:bg-slate-800 p-1.5 rounded-lg border border-slate-800 text-violet-300 hover:text-white transition-all"><Edit className="w-3.5 h-3.5" /></button>
+                            <button type="button" onClick={() => handleAdminDelete(log.id)} className="bg-slate-900 hover:bg-rose-950/40 p-1.5 rounded-lg border border-slate-800 text-rose-400 hover:text-rose-200 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
           </div>
         )}
 
