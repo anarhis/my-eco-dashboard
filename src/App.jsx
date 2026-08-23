@@ -2152,13 +2152,17 @@ export default function App() {
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Последняя чистка</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.lastCleaned || ''} 
+                          <select 
+                            value={adminForm.lastCleaned || '3 недели назад'} 
                             onChange={e => setAdminForm({ ...adminForm, lastCleaned: e.target.value })}
-                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                            className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500 font-mono"
+                          >
+                            <option value="Только что очищено">Только что очищено</option>
+                            <option value="1 неделя назад">1 неделя назад</option>
+                            <option value="2 недели назад">2 недели назад</option>
+                            <option value="3 недели назад">3 недели назад</option>
+                            <option value="4+ недели назад">4+ недели назад</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Статус чистки</label>
@@ -2191,53 +2195,89 @@ export default function App() {
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Сорт кофе / Какао</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.variety || ''} 
+                          <select 
+                            value={adminForm.variety || 'Geisha (Анаэробная)'} 
                             onChange={e => setAdminForm({ ...adminForm, variety: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="Geisha (Анаэробная)">Geisha (Анаэробная)</option>
+                            <option value="Geisha (Спешелти)">Geisha (Спешелти)</option>
+                            <option value="SL-28 (Экспериментальная)">SL-28 (Экспериментальная)</option>
+                            <option value="SL-28 (Спешелти)">SL-28 (Спешелти)</option>
+                            <option value="Catuai (Высокогорный)">Catuai (Высокогорный)</option>
+                            <option value="Catuai">Catuai</option>
+                            <option value="Criollo (Элитный Какао)">Criollo (Элитный Какао)</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Стадия процесса</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.stage || ''} 
+                          <select 
+                            value={adminForm.stage || 'Ферментация'} 
                             onChange={e => setAdminForm({ ...adminForm, stage: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="Ферментация">Ферментация</option>
+                            <option value="Ферментация (Анаэробная)">Ферментация (Анаэробная)</option>
+                            <option value="Сушка на африканских кроватях">Сушка на африканских кроватях</option>
+                            <option value="Готов к GrainPro-мешкам">Готов к GrainPro-мешкам</option>
+                            <option value="Спелое зерно">Спелое зерно</option>
+                            <option value="Полуспелое">Полуспелое</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Сахар BRIX</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.brix || ''} 
+                          <select 
+                            value={adminForm.brix || '23%'} 
                             onChange={e => setAdminForm({ ...adminForm, brix: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="N/A">N/A</option>
+                            <option value="18%">18%</option>
+                            <option value="20%">20%</option>
+                            <option value="21%">21%</option>
+                            <option value="22%">22%</option>
+                            <option value="23%">23%</option>
+                            <option value="23.4%">23.4%</option>
+                            <option value="24%">24%</option>
+                            <option value="25%">25%</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Влажность зерна (%)</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.moisture || ''} 
+                          <select 
+                            value={adminForm.moisture || '12%'} 
                             onChange={e => setAdminForm({ ...adminForm, moisture: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="42%">42%</option>
+                            <option value="35%">35%</option>
+                            <option value="25%">25%</option>
+                            <option value="18%">18%</option>
+                            <option value="14.8%">14.8%</option>
+                            <option value="12.5%">12.5%</option>
+                            <option value="12%">12%</option>
+                            <option value="11.8%">11.8%</option>
+                            <option value="11.4%">11.4%</option>
+                            <option value="11%">11%</option>
+                            <option value="10.5%">10.5%</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Температура</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.temp || ''} 
+                          <select 
+                            value={adminForm.temp || '21.5°C'} 
                             onChange={e => setAdminForm({ ...adminForm, temp: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full font-mono focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="18.0°C">18.0°C</option>
+                            <option value="19.5°C">19.5°C</option>
+                            <option value="20.0°C">20.0°C</option>
+                            <option value="21.5°C">21.5°C</option>
+                            <option value="22.0°C">22.0°C</option>
+                            <option value="23.5°C">23.5°C</option>
+                            <option value="24.2°C">24.2°C</option>
+                            <option value="25.0°C">25.0°C</option>
+                          </select>
                         </div>
                         <div className="flex items-center h-full pt-4">
                           <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-200">
@@ -2289,13 +2329,18 @@ export default function App() {
                         </div>
                         <div className="md:col-span-3">
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Стадия созревания стручков</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.status || ''} 
+                          <select 
+                            value={adminForm.status || '85% созревание'} 
                             onChange={e => setAdminForm({ ...adminForm, status: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="85% созревание">85% созревание</option>
+                            <option value="40% созревание">40% созревание</option>
+                            <option value="Зеленые стручки (Формирование)">Зеленые стручки (Формирование)</option>
+                            <option value="Рост стручков">Рост стручков</option>
+                            <option value="Сбор урожая">Сбор урожая</option>
+                            <option value="Цветение">Цветение</option>
+                          </select>
                         </div>
                       </>
                     )}
@@ -2316,13 +2361,17 @@ export default function App() {
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Порода пчел</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.variety || ''} 
+                          <select 
+                            value={adminForm.variety || 'Golden Italian'} 
                             onChange={e => setAdminForm({ ...adminForm, variety: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="Golden Italian">Golden Italian</option>
+                            <option value="Carnica Mix">Carnica Mix</option>
+                            <option value="Melipona (Безжалостные)">Melipona (Безжалостные)</option>
+                            <option value="Italian Buckfast">Italian Buckfast</option>
+                            <option value="Caucasian Honeybee">Caucasian Honeybee</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Частота гула (Гц)</label>
@@ -2359,13 +2408,18 @@ export default function App() {
                         </div>
                         <div className="md:col-span-3">
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Текстовая заметка улья</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.note || ''} 
+                          <select 
+                            value={adminForm.note || 'Стабильный гул.'} 
                             onChange={e => setAdminForm({ ...adminForm, note: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="Стабильный гул медосбора.">Стабильный гул медосбора.</option>
+                            <option value="Критический гул! Риск роения.">Критический гул! Риск роения.</option>
+                            <option value="Семья здорова, высокая активность.">Семья здорова, высокая активность.</option>
+                            <option value="Требуется визуальный осмотр рамок.">Требуется визуальный осмотр рамок.</option>
+                            <option value="Снижена звуковая активность.">Снижена звуковая активность.</option>
+                            <option value="Стабильный гул.">Стабильный гул.</option>
+                          </select>
                         </div>
                       </>
                     )}
@@ -2375,23 +2429,41 @@ export default function App() {
                       <>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Локация / Датчик</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.location || ''} 
+                          <select 
+                            value={adminForm.location || 'Буй №4 (Палаван)'} 
                             onChange={e => setAdminForm({ ...adminForm, location: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="Буй №1 (Палаван)">Буй №1 (Палаван)</option>
+                            <option value="Буй №2 (Палаван)">Буй №2 (Палаван)</option>
+                            <option value="Буй №4 (Палаван)">Буй №4 (Палаван)</option>
+                            <option value="Вышка №2 (Палаван)">Вышка №2 (Палаван)</option>
+                            <option value="Лаборатория (Палаван)">Лаборатория (Палаван)</option>
+                            <option value="Сектор А3 (Коста-Рика)">Сектор А3 (Коста-Рика)</option>
+                            <option value="Улей №12 (Коста-Рика)">Улей №12 (Коста-Рика)</option>
+                            <option value="Улей №15 (Коста-Рика)">Улей №15 (Коста-Рика)</option>
+                            <option value="Сушильный цех (Коста-Рика)">Сушильный цех (Коста-Рика)</option>
+                            <option value="Анаэробный бак (Коста-Рика)">Анаэробный бак (Коста-Рика)</option>
+                            <option value="Ручной ввод">Ручной ввод</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Зафиксированное событие</label>
-                          <input 
-                            type="text" 
-                            value={adminForm.event || ''} 
+                          <select 
+                            value={adminForm.event || 'Кастомное событие БД'} 
                             onChange={e => setAdminForm({ ...adminForm, event: e.target.value })}
                             className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:ring-1 focus:ring-violet-500"
-                            required
-                          />
+                          >
+                            <option value="AI-радар обнаружил неопознанное плавсредство на дистанции 800м. Оповещение отправлено.">AI-радар обнаружил неопознанное плавсредство на дистанции 800м.</option>
+                            <option value="Автоматический полив включен. Температура почвы >28°C. Расход: 450л.">Автоматический полив включен. Расход: 450л.</option>
+                            <option value="AI-анализ звука: зафиксированы шумы винтов туристического катера. Безопасная зона.">AI-анализ звука: шумы винтов катера.</option>
+                            <option value="Внимание! Резкое падение звуковой активности (активность семьи <70%). Рекомендуется осмотр.">Резкое падение звуковой активности улья.</option>
+                            <option value="Проведен физический замер калибра пищевой устрицы. Скорость фильтрации лагуны высокая.">Физический замер калибра устриц.</option>
+                            <option value="Акустическая терапия улья У-12: частота роения успешно погашена противовибрационным генератором.">Акустическая терапия улья У-12 завершена.</option>
+                            <option value="Запущен ручной режим капельного орошения плантаций кофе.">Ручной запуск капельного орошения.</option>
+                            <option value="YOLOv8: Обнаружен Тапир (94% уверенности). Движение в сторону буферной зоны.">YOLOv8: обнаружен тапир у леса.</option>
+                            <option value="Кастомное событие БД">Кастомное событие БД</option>
+                          </select>
                         </div>
                         <div>
                           <label className="block text-[10px] text-slate-400 uppercase font-mono mb-1">Класс угрозы</label>
